@@ -425,6 +425,19 @@ main {
 }
 .full-player.open { transform: translateY(0); }
 
+/* 앨범아트 지배색 배경 오버레이 */
+.fp-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .8s ease, background 0s;
+  background: transparent;
+}
+.fp-bg.show { opacity: 1; }
+.full-player > *:not(.fp-bg) { position: relative; z-index: 1; }
+
 .fp-handle {
   width: 36px; height: 4px;
   background: var(--border);
@@ -492,7 +505,7 @@ main {
   background: var(--text);
   border-radius: 2px;
   width: 0%;
-  transition: width .1s linear;
+  transition: width .1s linear, background .8s ease;
 }
 .fp-times {
   display: flex;
@@ -681,6 +694,7 @@ main {
 
 <!-- Full Player (mobile, slides up) -->
 <div class="full-player" id="fullPlayer">
+  <div class="fp-bg" id="fpBg"></div>
   <div class="fp-handle"></div>
   <button class="fp-close" id="fpClose">
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
@@ -851,9 +865,9 @@ async function loadAlbumArt(url) {
   const fpImg = document.getElementById('fpArtImg');
   mpImg.classList.remove('loaded');
   fpImg.classList.remove('loaded');
+  resetPlayerTheme();
 
   try {
-    // 첫 640KB만 fetch — ID3 태그와 커버아트를 담기에 충분
     const res = await fetch(url, { headers: { Range: 'bytes=0-655359' } });
     if (!res.ok && res.status !== 206) return;
     const buf  = await res.arrayBuffer();
@@ -869,9 +883,98 @@ async function loadAlbumArt(url) {
       if (img._blobUrl) URL.revokeObjectURL(img._blobUrl);
       img._blobUrl = src;
       img.src = src;
-      img.onload = () => img.classList.add('loaded');
+      img.onload = () => {
+        img.classList.add('loaded');
+        // fpImg가 로드되면 색 분석 → 풀플레이어 테마 적용
+        if (img === fpImg) {
+          const hsl = extractDominantHsl(img);
+          applyPlayerTheme(hsl);
+        }
+      };
     });
   } catch (e) { /* 앨범아트 없음 → ♫ 폴백 유지 */ }
+}
+
+// ── 색 분석 ──
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b), l = (max+min)/2;
+  if (max === min) return [0, 0, l];
+  const d = max - min;
+  const s = l > 0.5 ? d/(2-max-min) : d/(max+min);
+  let h;
+  if      (max===r) h = (g-b)/d + (g<b ? 6 : 0);
+  else if (max===g) h = (b-r)/d + 2;
+  else              h = (r-g)/d + 4;
+  return [h*60, s, l];
+}
+
+function extractDominantHsl(imgEl) {
+  try {
+    const SIZE = 64;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = SIZE;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(imgEl, 0, 0, SIZE, SIZE);
+    const px = ctx.getImageData(0, 0, SIZE, SIZE).data;
+
+    // 36개 색상 버킷(10° 단위)에 픽셀 누적
+    const hSum = new Float64Array(36);
+    const sSum = new Float64Array(36);
+    const lSum = new Float64Array(36);
+    const cnt  = new Int32Array(36);
+
+    for (let i = 0; i < px.length; i += 4) {
+      if (px[i+3] < 128) continue;
+      const [h, s, l] = rgbToHsl(px[i], px[i+1], px[i+2]);
+      // 흰색(L>0.87), 검정(L<0.13), 회색(S<0.18) 제외
+      if (l > 0.87 || l < 0.13 || s < 0.18) continue;
+      const b = Math.floor(h / 10) % 36;
+      hSum[b] += h; sSum[b] += s; lSum[b] += l; cnt[b]++;
+    }
+
+    let best = -1, bestN = 0;
+    for (let i = 0; i < 36; i++) if (cnt[i] > bestN) { bestN = cnt[i]; best = i; }
+    if (best < 0 || bestN < 8) return null; // 색감 없는 이미지
+
+    const n = cnt[best];
+    return { h: hSum[best]/n, s: sSum[best]/n * 100, l: lSum[best]/n * 100 };
+  } catch(e) { return null; }
+}
+
+function applyPlayerTheme(hsl) {
+  const fpBg = document.getElementById('fpBg');
+  const bar  = document.getElementById('fpProgFill');
+
+  if (!hsl) { resetPlayerTheme(); return; }
+
+  const { h, s } = hsl;
+  // 배경: 채도를 크게 줄이고 명도를 높여 은은하게
+  const bs = Math.min(s * 0.38, 26);
+  const gradient = `linear-gradient(
+    175deg,
+    hsl(${h}, ${bs}%, 86%) 0%,
+    hsl(${h}, ${bs * 0.6}%, 93%) 45%,
+    hsl(${h}, ${bs * 0.25}%, 97%) 100%)`;
+
+  // 새 그라데이션 세팅 후 페이드인
+  fpBg.style.transition = 'opacity 0s';
+  fpBg.style.background = gradient;
+  fpBg.classList.remove('show');
+  fpBg.offsetHeight; // reflow
+  fpBg.style.transition = 'opacity .8s ease';
+  fpBg.classList.add('show');
+
+  // 진행바: 동일 색조, 채도 높이고 명도 낮춰 선명하게
+  const barS = Math.min(s * 0.8, 62);
+  bar.style.background = `hsl(${h}, ${barS}%, 38%)`;
+}
+
+function resetPlayerTheme() {
+  const fpBg = document.getElementById('fpBg');
+  const bar  = document.getElementById('fpProgFill');
+  fpBg.classList.remove('show');
+  bar.style.background = '';
 }
 
 function extractID3Cover(d) {
