@@ -425,17 +425,36 @@ main {
 }
 .full-player.open { transform: translateY(0); }
 
-/* 앨범아트 지배색 배경 오버레이 */
+/* 앨범아트 블러 배경 (Apple Music 스타일) */
 .fp-bg {
   position: absolute;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: 0;
-  transition: opacity .8s ease, background 0s;
-  background: transparent;
+  overflow: hidden;
 }
-.fp-bg.show { opacity: 1; }
+.fp-bg-art {
+  position: absolute;
+  inset: -60px;
+  width: calc(100% + 120px);
+  height: calc(100% + 120px);
+  object-fit: cover;
+  filter: blur(55px) saturate(2.8) brightness(1.08);
+  opacity: 0;
+  transition: opacity .9s ease;
+}
+.fp-bg-art.show { opacity: 1; }
+.fp-bg-overlay {
+  position: absolute;
+  inset: 0;
+  /* 상단은 앨범색이 잘 보이게, 하단은 텍스트 가독성 확보 */
+  background: linear-gradient(
+    180deg,
+    rgba(255,255,255,0.10) 0%,
+    rgba(255,255,255,0.42) 50%,
+    rgba(255,255,255,0.82) 100%
+  );
+}
 .full-player > *:not(.fp-bg) { position: relative; z-index: 1; }
 
 .fp-handle {
@@ -694,7 +713,10 @@ main {
 
 <!-- Full Player (mobile, slides up) -->
 <div class="full-player" id="fullPlayer">
-  <div class="fp-bg" id="fpBg"></div>
+  <div class="fp-bg">
+    <img class="fp-bg-art" id="fpBgArt" alt="">
+    <div class="fp-bg-overlay"></div>
+  </div>
   <div class="fp-handle"></div>
   <button class="fp-close" id="fpClose">
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
@@ -885,10 +907,9 @@ async function loadAlbumArt(url) {
       img.src = src;
       img.onload = () => {
         img.classList.add('loaded');
-        // fpImg가 로드되면 색 분석 → 풀플레이어 테마 적용
         if (img === fpImg) {
           const hsl = extractDominantHsl(img);
-          applyPlayerTheme(hsl);
+          applyPlayerTheme(hsl, src); // 블러 배경 + 진행바 색
         }
       };
     });
@@ -942,38 +963,34 @@ function extractDominantHsl(imgEl) {
   } catch(e) { return null; }
 }
 
-function applyPlayerTheme(hsl) {
-  const fpBg = document.getElementById('fpBg');
-  const bar  = document.getElementById('fpProgFill');
+function applyPlayerTheme(hsl, artSrc) {
+  const fpBgArt = document.getElementById('fpBgArt');
+  const bar     = document.getElementById('fpProgFill');
 
-  if (!hsl) { resetPlayerTheme(); return; }
+  // ① 앨범아트 블러 배경: 이미지 자체를 쓰므로 색 그대로 표현
+  if (artSrc) {
+    fpBgArt.classList.remove('show');
+    fpBgArt.src = artSrc;
+    fpBgArt.onload = () => {
+      fpBgArt.offsetHeight;
+      fpBgArt.classList.add('show');
+    };
+  }
 
-  const { h, s } = hsl;
-  // 배경: 채도를 크게 줄이고 명도를 높여 은은하게
-  const bs = Math.min(s * 0.38, 26);
-  const gradient = `linear-gradient(
-    175deg,
-    hsl(${h}, ${bs}%, 86%) 0%,
-    hsl(${h}, ${bs * 0.6}%, 93%) 45%,
-    hsl(${h}, ${bs * 0.25}%, 97%) 100%)`;
-
-  // 새 그라데이션 세팅 후 페이드인
-  fpBg.style.transition = 'opacity 0s';
-  fpBg.style.background = gradient;
-  fpBg.classList.remove('show');
-  fpBg.offsetHeight; // reflow
-  fpBg.style.transition = 'opacity .8s ease';
-  fpBg.classList.add('show');
-
-  // 진행바: 동일 색조, 채도 높이고 명도 낮춰 선명하게
-  const barS = Math.min(s * 0.8, 62);
-  bar.style.background = `hsl(${h}, ${barS}%, 38%)`;
+  // ② 진행바: 추출된 지배색, 채도·명도 조절로 앨범 색조와 동일 계열
+  if (hsl) {
+    const { h, s } = hsl;
+    bar.style.background = `hsl(${h}, ${Math.min(s * 0.85, 68)}%, 35%)`;
+  } else {
+    bar.style.background = '';
+  }
 }
 
 function resetPlayerTheme() {
-  const fpBg = document.getElementById('fpBg');
-  const bar  = document.getElementById('fpProgFill');
-  fpBg.classList.remove('show');
+  const fpBgArt = document.getElementById('fpBgArt');
+  const bar     = document.getElementById('fpProgFill');
+  fpBgArt.classList.remove('show');
+  fpBgArt.src = '';
   bar.style.background = '';
 }
 
