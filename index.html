@@ -439,7 +439,8 @@ main {
   width: calc(100% + 120px);
   height: calc(100% + 120px);
   object-fit: cover;
-  filter: blur(55px) saturate(2.8) brightness(1.08);
+  /* 채도 낮춰 눈 피로 감소: 2.8 → 1.6 */
+  filter: blur(55px) saturate(1.6) brightness(1.04);
   opacity: 0;
   transition: opacity .9s ease;
 }
@@ -447,12 +448,12 @@ main {
 .fp-bg-overlay {
   position: absolute;
   inset: 0;
-  /* 상단은 앨범색이 잘 보이게, 하단은 텍스트 가독성 확보 */
+  /* 흰 오버레이 살짝 강화해 채도 보정 */
   background: linear-gradient(
     180deg,
-    rgba(255,255,255,0.10) 0%,
-    rgba(255,255,255,0.42) 50%,
-    rgba(255,255,255,0.82) 100%
+    rgba(255,255,255,0.22) 0%,
+    rgba(255,255,255,0.52) 52%,
+    rgba(255,255,255,0.86) 100%
   );
 }
 .full-player > *:not(.fp-bg) { position: relative; z-index: 1; }
@@ -546,20 +547,26 @@ main {
 .fp-btn {
   width: 52px; height: 52px;
   display: flex; align-items: center; justify-content: center;
-  color: var(--text);
+  /* prev/next: 진행바 색과 동일 (CSS 변수, 폴백 #666) */
+  color: var(--fp-accent, #666);
   border-radius: 50%;
-  transition: background .12s;
+  transition: opacity .12s, color .5s ease;
 }
-.fp-btn:active { background: var(--surface2); }
-.fp-btn.secondary { color: var(--text2); width: 44px; height: 44px; }
+.fp-btn:active { opacity: .6; }
+.fp-btn.secondary {
+  color: var(--text2);
+  width: 44px; height: 44px;
+  transition: color .5s ease;
+}
 .fp-btn.secondary.active { color: var(--text); }
+/* 플레이 버튼: 원 제거, 삼각형만. 색은 prev/next보다 진하게 */
 .fp-btn.play {
   width: 64px; height: 64px;
-  background: var(--text);
-  color: #fff;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+  background: none;
+  color: var(--fp-accent-dark, #222);
+  transition: opacity .12s, color .5s ease;
 }
-.fp-btn.play:active { opacity: .8; }
+.fp-btn.play:active { opacity: .6; }
 
 /* Hide full player on desktop (controls in mini player bar) */
 @media (min-width: 768px) {
@@ -755,7 +762,7 @@ main {
       </svg>
     </button>
     <button class="fp-btn play" id="fpPlay">
-      <svg id="fpPlayIcon" width="30" height="30" viewBox="0 0 24 24" fill="currentColor">
+      <svg id="fpPlayIcon" width="42" height="42" viewBox="0 0 24 24" fill="currentColor">
         <polygon points="5,3 19,12 5,21"/>
       </svg>
     </button>
@@ -964,34 +971,43 @@ function extractDominantHsl(imgEl) {
 }
 
 function applyPlayerTheme(hsl, artSrc) {
-  const fpBgArt = document.getElementById('fpBgArt');
-  const bar     = document.getElementById('fpProgFill');
+  const fpBgArt  = document.getElementById('fpBgArt');
+  const bar      = document.getElementById('fpProgFill');
+  const fp       = document.getElementById('fullPlayer');
 
-  // ① 앨범아트 블러 배경: 이미지 자체를 쓰므로 색 그대로 표현
+  // ① 앨범아트 블러 배경
   if (artSrc) {
     fpBgArt.classList.remove('show');
     fpBgArt.src = artSrc;
-    fpBgArt.onload = () => {
-      fpBgArt.offsetHeight;
-      fpBgArt.classList.add('show');
-    };
+    fpBgArt.onload = () => { fpBgArt.offsetHeight; fpBgArt.classList.add('show'); };
   }
 
-  // ② 진행바: 추출된 지배색, 채도·명도 조절로 앨범 색조와 동일 계열
+  // ② 진행바·버튼 색: 동일 색조 계열
   if (hsl) {
     const { h, s } = hsl;
-    bar.style.background = `hsl(${h}, ${Math.min(s * 0.85, 68)}%, 35%)`;
+    const barS        = Math.min(s * 0.85, 68);
+    const accent      = `hsl(${h}, ${barS}%, 35%)`;      // prev/next = 진행바 색
+    const accentDark  = `hsl(${h}, ${Math.min(s * 0.92, 74)}%, 24%)`; // play = 더 진하게
+
+    bar.style.background = accent;
+    fp.style.setProperty('--fp-accent',      accent);
+    fp.style.setProperty('--fp-accent-dark', accentDark);
   } else {
     bar.style.background = '';
+    fp.style.removeProperty('--fp-accent');
+    fp.style.removeProperty('--fp-accent-dark');
   }
 }
 
 function resetPlayerTheme() {
   const fpBgArt = document.getElementById('fpBgArt');
   const bar     = document.getElementById('fpProgFill');
+  const fp      = document.getElementById('fullPlayer');
   fpBgArt.classList.remove('show');
   fpBgArt.src = '';
   bar.style.background = '';
+  fp.style.removeProperty('--fp-accent');
+  fp.style.removeProperty('--fp-accent-dark');
 }
 
 function extractID3Cover(d) {
