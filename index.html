@@ -738,7 +738,6 @@ main {
 </div>
 
 <audio id="audioEl"></audio>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
 <script>
 // ── STATE ──
 const audio = document.getElementById('audioEl');
@@ -847,30 +846,76 @@ function updateNowPlaying(fn) {
   loadAlbumArt('music/' + encodeURIComponent(fn));
 }
 
-function loadAlbumArt(url) {
+async function loadAlbumArt(url) {
   const mpImg = document.getElementById('mpArtImg');
   const fpImg = document.getElementById('fpArtImg');
-  // reset
   mpImg.classList.remove('loaded');
   fpImg.classList.remove('loaded');
 
-  if (typeof jsmediatags === 'undefined') return;
-  jsmediatags.read(url, {
-    onSuccess(tag) {
-      const pic = tag.tags && tag.tags.picture;
-      if (!pic) return;
-      const bytes = new Uint8Array(pic.data);
-      const blob  = new Blob([bytes], { type: pic.format });
-      const src   = URL.createObjectURL(blob);
-      [mpImg, fpImg].forEach(img => {
-        if (img._blobUrl) URL.revokeObjectURL(img._blobUrl);
-        img._blobUrl = src;
-        img.src = src;
-        img.onload = () => img.classList.add('loaded');
-      });
-    },
-    onError() { /* no art — fallback emoji stays */ }
-  });
+  try {
+    // 첫 640KB만 fetch — ID3 태그와 커버아트를 담기에 충분
+    const res = await fetch(url, { headers: { Range: 'bytes=0-655359' } });
+    if (!res.ok && res.status !== 206) return;
+    const buf  = await res.arrayBuffer();
+    const data = new Uint8Array(buf);
+    const art  = extractID3Cover(data);
+    if (!art) return;
+
+    const isPng = art[0] === 0x89;
+    const blob  = new Blob([art], { type: isPng ? 'image/png' : 'image/jpeg' });
+    const src   = URL.createObjectURL(blob);
+
+    [mpImg, fpImg].forEach(img => {
+      if (img._blobUrl) URL.revokeObjectURL(img._blobUrl);
+      img._blobUrl = src;
+      img.src = src;
+      img.onload = () => img.classList.add('loaded');
+    });
+  } catch (e) { /* 앨범아트 없음 → ♫ 폴백 유지 */ }
+}
+
+function extractID3Cover(d) {
+  // ID3v2 magic check
+  if (d[0] !== 0x49 || d[1] !== 0x44 || d[2] !== 0x33) return null;
+
+  const ver  = d[3]; // 2=v2.2, 3=v2.3, 4=v2.4
+  // syncsafe tag size
+  const tagEnd = 10 + (((d[6]&0x7f)<<21)|((d[7]&0x7f)<<14)|((d[8]&0x7f)<<7)|(d[9]&0x7f));
+
+  let pos = 10;
+  while (pos < tagEnd - 10 && pos < d.length - 10) {
+    let id, size, hLen;
+
+    if (ver >= 3) {
+      id   = String.fromCharCode(d[pos],d[pos+1],d[pos+2],d[pos+3]);
+      // v2.4 uses syncsafe frame size; v2.3 uses plain uint32
+      size = ver === 4
+        ? (((d[pos+4]&0x7f)<<21)|((d[pos+5]&0x7f)<<14)|((d[pos+6]&0x7f)<<7)|(d[pos+7]&0x7f))
+        : ((d[pos+4]<<24)|(d[pos+5]<<16)|(d[pos+6]<<8)|d[pos+7]);
+      hLen = 10;
+    } else {
+      // ID3v2.2: 3-byte ID, 3-byte size
+      id   = String.fromCharCode(d[pos],d[pos+1],d[pos+2]);
+      size = (d[pos+3]<<16)|(d[pos+4]<<8)|d[pos+5];
+      hLen = 6;
+    }
+
+    if (size <= 0 || pos + hLen + size > d.length) break;
+
+    if (id === 'APIC' || id === 'PIC') {
+      const frame = d.subarray(pos + hLen, pos + hLen + size);
+      // JPEG magic: FF D8 FF  |  PNG magic: 89 50 4E 47
+      for (let i = 1; i < frame.length - 4; i++) {
+        if ((frame[i] === 0xFF && frame[i+1] === 0xD8 && frame[i+2] === 0xFF) ||
+            (frame[i] === 0x89 && frame[i+1] === 0x50 && frame[i+2] === 0x4E && frame[i+3] === 0x47)) {
+          return frame.subarray(i);
+        }
+      }
+    }
+
+    pos += hLen + size;
+  }
+  return null;
 }
 
 function highlightPlaying(fn) {
