@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Feelgram Music</title>
 <style>
 /* ── TOKENS ── */
@@ -419,6 +421,7 @@ main {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   transform: translateY(100%);
   transition: transform .4s var(--transition);
   overflow: hidden;
@@ -456,21 +459,26 @@ main {
     rgba(255,255,255,0.86) 100%
   );
 }
-.full-player > *:not(.fp-bg) { position: relative; z-index: 1; }
+.full-player > *:not(.fp-bg):not(.fp-handle):not(.fp-close) { position: relative; z-index: 1; }
 
 .fp-handle {
   width: 36px; height: 4px;
-  background: var(--border);
+  background: rgba(0,0,0,0.18);
   border-radius: 2px;
-  margin: 12px auto 4px;
-  flex-shrink: 0;
+  position: absolute;
+  top: calc(14px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
 }
 .fp-close {
-  align-self: flex-start;
+  position: absolute;
+  top: calc(28px + env(safe-area-inset-top, 0px));
+  left: 8px;
   width: 44px; height: 44px;
   display: flex; align-items: center; justify-content: center;
   color: var(--text2);
-  margin: 0 8px 8px;
+  z-index: 2;
 }
 .fp-close:active { color: var(--text); }
 
@@ -509,6 +517,7 @@ main {
 .fp-progress {
   width: 100%;
   padding: 0 32px;
+  margin-top: 24px;
   margin-bottom: 28px;
   flex-shrink: 0;
 }
@@ -602,7 +611,7 @@ main {
 /* ── SAFE AREA (notch) ── */
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   .mini-player { padding-bottom: calc(8px + env(safe-area-inset-bottom)); height: calc(var(--mini-h) + env(safe-area-inset-bottom)); }
-  .full-player { padding-bottom: env(safe-area-inset-bottom); }
+  .full-player { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
 }
 </style>
 </head>
@@ -805,7 +814,7 @@ fetch('playlist.json')
 function renderFolders() {
   document.getElementById('folderList').innerHTML = playlist.map((f, i) => `
     <div class="folder-item" data-idx="${i}" onclick="selectFolder(${i})">
-      <span class="fi-icon">♪</span>
+      <span class="fi-icon">+</span>
       <span class="fi-name">${f.folder}</span>
       <span class="fi-count">${f.songs.length}</span>
     </div>`).join('');
@@ -822,7 +831,7 @@ function renderSongList(folder) {
   document.getElementById('mainContent').innerHTML = `
     <div class="list-header">
       <div class="list-header-row">
-        <span class="lh-icon">${folder.icon}</span>
+        <span class="lh-icon">♪</span>
         <span class="lh-name">${folder.folder}</span>
         <span class="lh-count">${folder.songs.length}곡</span>
       </div>
