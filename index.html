@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#f6f6f6">
@@ -19,6 +19,7 @@
   --text3: #bbbbbb;
   --accent: #111111;
   --active-bg: #efefef;
+  --song-active-bg: #e0e0e0;
   --header-h: 54px;
   --mini-h: 68px;
   --drawer-w: 270px;
@@ -277,7 +278,7 @@ main {
   transition: background .1s;
 }
 .song-row:active { background: var(--surface2); }
-.song-row.playing { background: var(--active-bg); }
+.song-row.playing { background: var(--song-active-bg); }
 .song-num {
   width: 22px; text-align: right;
   font-size: 12px; color: var(--text3);
@@ -488,6 +489,7 @@ main {
   height: min(240px, 55vw);
   margin: 0 auto 28px;
   flex-shrink: 0;
+  transform: translateY(-35px);
 }
 .fp-art {
   width: 100%; height: 100%;
@@ -507,11 +509,25 @@ main {
   padding: 0 32px;
   margin-bottom: 24px;
   flex-shrink: 0;
+  transform: translateY(-35px);
+}
+.fp-title-wrap {
+  width: 100%;
+  overflow: hidden;
+  margin-bottom: 4px;
+  position: relative;
 }
 .fp-title {
   font-size: 18px; font-weight: 700;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  margin-bottom: 4px;
+  white-space: nowrap;
+  display: inline-block;
+  will-change: transform;
+}
+@keyframes fp-marquee {
+  0%       { transform: translateX(0); }
+  50%      { transform: translateX(var(--marquee-end, -100%)); }
+  50.001%  { transform: translateX(var(--marquee-start, 100%)); }
+  100%     { transform: translateX(0); }
 }
 .fp-folder { font-size: 13px; color: var(--text2); }
 
@@ -552,7 +568,7 @@ main {
   width: 100%;
   padding: 0 24px;
   position: absolute;
-  bottom: calc(38px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(52px + env(safe-area-inset-bottom, 0px));
   left: 0;
   z-index: 2;
 }
@@ -599,7 +615,7 @@ main {
 /* ── MINI PROGRESS STRIP ── */
 .mp-strip {
   position: absolute;
-  bottom: 0; left: 0; right: 0;
+  top: 0; left: 0; right: 0;
   height: 2px;
   background: var(--border);
   pointer-events: none;
@@ -747,7 +763,9 @@ main {
     </div>
   </div>
   <div class="fp-meta">
-    <div class="fp-title" id="fpTitle">곡 제목</div>
+    <div class="fp-title-wrap" id="fpTitleWrap">
+      <div class="fp-title" id="fpTitle">곡 제목</div>
+    </div>
     <div class="fp-folder" id="fpFolder">Feelgram Music</div>
   </div>
   <div class="fp-progress">
@@ -803,6 +821,77 @@ function setThemeColor(hsl) {
   meta.content = hsl
     ? `hsl(${hsl.h}, ${Math.min(hsl.s * 0.55, 48)}%, 78%)`
     : '#f6f6f6';
+}
+
+// ── TITLE MARQUEE ──
+let marqueeState = null;
+const MARQUEE_SPEED = 70;       // px per second
+const MARQUEE_REPEAT = 2;
+const MARQUEE_PAUSE_MS = 10000;
+
+function stopTitleMarquee() {
+  if (marqueeState) {
+    marqueeState.cancelled = true;
+    marqueeState.timeouts.forEach(clearTimeout);
+    marqueeState = null;
+  }
+  const titleEl = document.getElementById('fpTitle');
+  if (titleEl) {
+    titleEl.style.transition = 'none';
+    titleEl.style.transform = 'translateX(0)';
+  }
+}
+
+function startTitleMarquee() {
+  stopTitleMarquee();
+  if (!fullPlayer.classList.contains('open')) return;
+
+  const titleEl = document.getElementById('fpTitle');
+  const wrap = document.getElementById('fpTitleWrap');
+  if (!titleEl || !wrap) return;
+
+  const state = { cancelled: false, timeouts: [] };
+  marqueeState = state;
+
+  requestAnimationFrame(() => {
+    if (state.cancelled) return;
+    const titleW = titleEl.scrollWidth;
+    const wrapW  = wrap.clientWidth;
+    if (titleW <= wrapW + 1) return; // no overflow → no marquee
+
+    const phase1Ms = (titleW / MARQUEE_SPEED) * 1000;
+    const phase2Ms = (wrapW  / MARQUEE_SPEED) * 1000;
+
+    function cycle(n) {
+      if (state.cancelled) return;
+      if (n >= MARQUEE_REPEAT) {
+        const t = setTimeout(() => {
+          if (!state.cancelled) startTitleMarquee();
+        }, MARQUEE_PAUSE_MS);
+        state.timeouts.push(t);
+        return;
+      }
+      // Phase 1: default → fully off-screen left
+      titleEl.style.transition = `transform ${phase1Ms}ms linear`;
+      titleEl.style.transform  = `translateX(${-titleW}px)`;
+
+      const t1 = setTimeout(() => {
+        if (state.cancelled) return;
+        // Snap to off-screen right
+        titleEl.style.transition = 'none';
+        titleEl.style.transform  = `translateX(${wrapW}px)`;
+        void titleEl.offsetWidth; // reflow
+        // Phase 2: off-right → default
+        titleEl.style.transition = `transform ${phase2Ms}ms linear`;
+        titleEl.style.transform  = 'translateX(0)';
+
+        const t2 = setTimeout(() => cycle(n + 1), phase2Ms + 60);
+        state.timeouts.push(t2);
+      }, phase1Ms + 60);
+      state.timeouts.push(t1);
+    }
+    cycle(0);
+  });
 }
 
 const PAUSE_SVG = `<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>`;
@@ -905,6 +994,9 @@ function updateNowPlaying(fn) {
   document.getElementById('fpFolder').textContent = folder;
   document.title = title + ' — Feelgram Music';
   loadAlbumArt('music/' + encodeURIComponent(fn));
+  if (typeof fullPlayer !== 'undefined' && fullPlayer.classList.contains('open')) {
+    setTimeout(startTitleMarquee, 100);
+  }
 }
 
 async function loadAlbumArt(url) {
@@ -1180,11 +1272,13 @@ function openFullPlayer() {
   fullPlayer.classList.add('open');
   document.body.style.overflow = 'hidden';
   setThemeColor(currentHsl);
+  setTimeout(startTitleMarquee, 500);
 }
 function closeFullPlayer() {
   fullPlayer.classList.remove('open');
   document.body.style.overflow = '';
   setThemeColor(null);
+  stopTitleMarquee();
 }
 
 document.getElementById('miniPlayer').onclick = openFullPlayer;
