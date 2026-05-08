@@ -29,7 +29,12 @@
 
 /* ── RESET ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transparent; }
+html, body {
+  height: 100%;
+  height: 100lvh; /* iOS 16.4+: full viewport including safe areas */
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
 body {
   font-family: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
   background: var(--bg);
@@ -829,6 +834,17 @@ function setThemeColor(hsl) {
     : '#f6f6f6';
 }
 
+function fpTintFromHsl(hsl) {
+  if (!hsl) return '';
+  return `hsl(${hsl.h}, ${Math.min(hsl.s * 0.5, 40)}%, 86%)`;
+}
+
+function applyBodyTint(hsl) {
+  const tint = fpTintFromHsl(hsl);
+  document.body.style.background = tint;
+  document.documentElement.style.background = tint;
+}
+
 // ── TITLE MARQUEE ──
 let marqueeState = null;
 const MARQUEE_SPEED = 70;       // px per second
@@ -1098,15 +1114,16 @@ function applyPlayerTheme(hsl, artSrc) {
     fpBgArt.onload = () => { fpBgArt.offsetHeight; fpBgArt.classList.add('show'); };
   }
 
-  // ② 진행바 색 + theme-color + 풀플레이어 베이스 배경: 앨범아트 색조 반영
+  // ② 진행바 색 + theme-color + 풀플레이어/body 베이스 배경: 앨범아트 색조 반영
   currentHsl = hsl;
   if (hsl) {
     const { h, s } = hsl;
     const barS = Math.min(s * 0.85, 68);
     bar.style.background = `hsl(${h}, ${barS}%, 35%)`;
     setThemeColor(hsl);
-    // 풀플레이어 자체 배경을 앨범아트 톤으로 — fp-bg가 못 미치는 safe area도 같은 색으로 채움
-    fp.style.background = `hsl(${h}, ${Math.min(s * 0.5, 40)}%, 86%)`;
+    fp.style.background = fpTintFromHsl(hsl);
+    // body·html도 동일 톤으로: iOS PWA에서 fixed가 safe area를 못 덮을 때의 흰 띠 방지
+    if (fullPlayer.classList.contains('open')) applyBodyTint(hsl);
   } else {
     bar.style.background = '';
     setThemeColor(null);
@@ -1122,6 +1139,7 @@ function resetPlayerTheme() {
   fpBgArt.src = '';
   bar.style.background = '';
   fp.style.background = '';
+  applyBodyTint(null);
   currentHsl = null;
   setThemeColor(null);
 }
@@ -1283,12 +1301,14 @@ function openFullPlayer() {
   fullPlayer.classList.add('open');
   document.body.style.overflow = 'hidden';
   setThemeColor(currentHsl);
+  applyBodyTint(currentHsl);
   setTimeout(startTitleMarquee, 500);
 }
 function closeFullPlayer() {
   fullPlayer.classList.remove('open');
   document.body.style.overflow = '';
   setThemeColor(null);
+  applyBodyTint(null);
   stopTitleMarquee();
 }
 
