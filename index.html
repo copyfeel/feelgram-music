@@ -349,9 +349,16 @@ main {
 .mp-art .art-fb { transition: opacity .2s; }
 .mp-art img.loaded ~ .art-fb { display: none; }
 .mp-info { flex: 1; min-width: 0; }
+.mp-title-wrap {
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+}
 .mp-title {
   font-size: 13.5px; font-weight: 600;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  will-change: transform;
 }
 .mp-sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
 .mp-play-btn {
@@ -703,7 +710,9 @@ main {
       <span class="art-fb">♫</span>
     </div>
     <div class="mp-info">
-      <div class="mp-title" id="mpTitle">재생 중인 곡 없음</div>
+      <div class="mp-title-wrap" id="mpTitleWrap">
+        <div class="mp-title" id="mpTitle">재생 중인 곡 없음</div>
+      </div>
       <div class="mp-sub" id="mpSub">Feelgram Music</div>
     </div>
     <!-- Progress strip at bottom -->
@@ -846,40 +855,41 @@ function applyBodyTint(hsl) {
 }
 
 // ── TITLE MARQUEE ──
-let marqueeState = null;
-const MARQUEE_SPEED = 70;       // px per second
+const marqueeStates = new Map();          // elId → state
+const MARQUEE_SPEED = 70;                 // px per second
 const MARQUEE_REPEAT = 2;
 const MARQUEE_PAUSE_MS = 10000;
 
-function stopTitleMarquee() {
-  if (marqueeState) {
-    marqueeState.cancelled = true;
-    marqueeState.timeouts.forEach(clearTimeout);
-    marqueeState = null;
+function stopMarquee(elId) {
+  const state = marqueeStates.get(elId);
+  if (state) {
+    state.cancelled = true;
+    state.timeouts.forEach(clearTimeout);
+    marqueeStates.delete(elId);
   }
-  const titleEl = document.getElementById('fpTitle');
-  if (titleEl) {
-    titleEl.style.transition = 'none';
-    titleEl.style.transform = 'translateX(0)';
+  const el = document.getElementById(elId);
+  if (el) {
+    el.style.transition = 'none';
+    el.style.transform = 'translateX(0)';
   }
 }
 
-function startTitleMarquee() {
-  stopTitleMarquee();
-  if (!fullPlayer.classList.contains('open')) return;
+function startMarquee(elId, wrapId, cond) {
+  stopMarquee(elId);
+  if (cond && !cond()) return;
 
-  const titleEl = document.getElementById('fpTitle');
-  const wrap = document.getElementById('fpTitleWrap');
-  if (!titleEl || !wrap) return;
+  const el = document.getElementById(elId);
+  const wrap = document.getElementById(wrapId);
+  if (!el || !wrap) return;
 
   const state = { cancelled: false, timeouts: [] };
-  marqueeState = state;
+  marqueeStates.set(elId, state);
 
   requestAnimationFrame(() => {
     if (state.cancelled) return;
-    const titleW = titleEl.scrollWidth;
+    const titleW = el.scrollWidth;
     const wrapW  = wrap.clientWidth;
-    if (titleW <= wrapW + 1) return; // no overflow → no marquee
+    if (titleW <= wrapW + 1) return;     // no overflow → no marquee
 
     const phase1Ms = (titleW / MARQUEE_SPEED) * 1000;
     const phase2Ms = (wrapW  / MARQUEE_SPEED) * 1000;
@@ -888,24 +898,24 @@ function startTitleMarquee() {
       if (state.cancelled) return;
       if (n >= MARQUEE_REPEAT) {
         const t = setTimeout(() => {
-          if (!state.cancelled) startTitleMarquee();
+          if (!state.cancelled) startMarquee(elId, wrapId, cond);
         }, MARQUEE_PAUSE_MS);
         state.timeouts.push(t);
         return;
       }
       // Phase 1: default → fully off-screen left
-      titleEl.style.transition = `transform ${phase1Ms}ms linear`;
-      titleEl.style.transform  = `translateX(${-titleW}px)`;
+      el.style.transition = `transform ${phase1Ms}ms linear`;
+      el.style.transform  = `translateX(${-titleW}px)`;
 
       const t1 = setTimeout(() => {
         if (state.cancelled) return;
         // Snap to off-screen right
-        titleEl.style.transition = 'none';
-        titleEl.style.transform  = `translateX(${wrapW}px)`;
-        void titleEl.offsetWidth; // reflow
+        el.style.transition = 'none';
+        el.style.transform  = `translateX(${wrapW}px)`;
+        void el.offsetWidth;             // reflow
         // Phase 2: off-right → default
-        titleEl.style.transition = `transform ${phase2Ms}ms linear`;
-        titleEl.style.transform  = 'translateX(0)';
+        el.style.transition = `transform ${phase2Ms}ms linear`;
+        el.style.transform  = 'translateX(0)';
 
         const t2 = setTimeout(() => cycle(n + 1), phase2Ms + 60);
         state.timeouts.push(t2);
@@ -915,6 +925,14 @@ function startTitleMarquee() {
     cycle(0);
   });
 }
+
+// Convenience wrappers
+function startTitleMarquee() {
+  startMarquee('fpTitle', 'fpTitleWrap', () => fullPlayer.classList.contains('open'));
+}
+function stopTitleMarquee() { stopMarquee('fpTitle'); }
+function startMpMarquee()   { startMarquee('mpTitle', 'mpTitleWrap'); }
+function stopMpMarquee()    { stopMarquee('mpTitle'); }
 
 const PAUSE_SVG = `<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>`;
 const PLAY_SVG  = `<polygon points="5,3 19,12 5,21"/>`;
@@ -1016,6 +1034,7 @@ function updateNowPlaying(fn) {
   document.getElementById('fpFolder').textContent = folder;
   document.title = title + ' — Feelgram Music';
   loadAlbumArt('music/' + encodeURIComponent(fn));
+  setTimeout(startMpMarquee, 100);
   if (typeof fullPlayer !== 'undefined' && fullPlayer.classList.contains('open')) {
     setTimeout(startTitleMarquee, 100);
   }
