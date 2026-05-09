@@ -1,0 +1,12 @@
+{
+  "name": "Feelgram Music",
+  "short_name": "Feelgram",
+  "description": "Feelgram Music Player",
+  "start_url": "/",
+  "scope": "/",
+  "id": "/",
+  "display": "standalone",
+  "background_color": "#f6f6f6",
+  "theme_color": "#f6f6f6",
+  "orientation": "portrait"
+}

@@ -6,6 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#f6f6f6">
+<link rel="manifest" href="/manifest.json">
 <title>Feelgram Music</title>
 <style>
 /* ── TOKENS ── */
@@ -1224,6 +1225,7 @@ main {
 const audio = document.getElementById('audioEl');
 let playlist = [], currentFolder = null, currentQueue = [], originalQueue = [], currentIdx = -1;
 let shuffle = false, repeat = 'none', currentHsl = null;
+const artCache = new Map(); // fn → data URL (stable, never revoked)
 
 function setThemeColor(hsl) {
   const meta = document.querySelector('meta[name="theme-color"]');
@@ -1333,10 +1335,14 @@ fetch('playlist.json')
   .then(data => {
     playlist = data;
     renderFolders();
-    if (playlist.length > 0) {
-      if (window.innerWidth >= 768) selectFolder(0); // desktop: auto-open first folder
-      // mobile: show home feed, user selects folder from drawer
+    restoreState(); // localStorage에서 이전 상태 복원
+    if (window.innerWidth >= 768) {
+      // 데스크톱: 복원된 폴더 또는 첫 폴더 선택
+      if (currentFolder !== null && playlist[currentFolder]) selectFolder(currentFolder);
+      else if (playlist.length > 0) selectFolder(0);
     }
+    // 모바일: 홈 피드 표시 (renderActivityCards는 showHomeFeed에서 호출됨)
+    showHomeFeed();
   })
   .catch(() => {
     document.getElementById('folderList').innerHTML =
@@ -1423,6 +1429,7 @@ function playCurrent() {
   setPlayIcons(true);
   highlightPlaying(fn);
   addToRecent(fn, currentFolder);
+  saveState();
 }
 
 function updateNowPlaying(fn) {
@@ -1434,6 +1441,7 @@ function updateNowPlaying(fn) {
   document.getElementById('fpTitle').title        = title;
   document.getElementById('fpFolder').textContent = folder;
   document.title = title + ' — Feelgram Music';
+  updateMediaSessionMetadata(title, folder, artCache.has(fn) ? artCache.get(fn) : null);
   loadAlbumArt('music/' + encodeURIComponent(fn));
   setTimeout(startMpMarquee, 100);
   if (typeof fullPlayer !== 'undefined' && fullPlayer.classList.contains('open')) {
@@ -1460,6 +1468,25 @@ async function loadAlbumArt(url) {
     const blob  = new Blob([art], { type: isPng ? 'image/png' : 'image/jpeg' });
     const src   = URL.createObjectURL(blob);
 
+    // data URL → artCache + MediaSession 아트워크
+    const fn = decodeURIComponent(url.replace(/^music\//, ''));
+    const reader = new FileReader();
+    reader.onload = e => {
+      const dataUrl = e.target.result;
+      artCache.set(fn, dataUrl);
+      updateMediaSessionMetadata(
+        document.getElementById('fpTitle').textContent,
+        document.getElementById('fpFolder').textContent,
+        dataUrl
+      );
+      // 홈피드 카드 아트 즉시 갱신 (이미 렌더된 카드)
+      const cards = document.querySelectorAll('.ha-card-art img');
+      cards.forEach(img => { if (img.dataset.fn === fn && !img.classList.contains('loaded')) {
+        img.src = dataUrl; img.onload = () => img.classList.add('loaded');
+      }});
+    };
+    reader.readAsDataURL(blob);
+
     [mpImg, fpImg].forEach(img => {
       if (img._blobUrl) URL.revokeObjectURL(img._blobUrl);
       img._blobUrl = src;
@@ -1468,11 +1495,11 @@ async function loadAlbumArt(url) {
         img.classList.add('loaded');
         if (img === fpImg) {
           const hsl = extractDominantHsl(img);
-          applyPlayerTheme(hsl, src); // 블러 배경 + 진행바 색
+          applyPlayerTheme(hsl, src);
         }
       };
     });
-  } catch (e) { /* 앨범아트 없음 → ♫ 폴백 유지 */ }
+  } catch (e) {}
 }
 
 // ── 색 분석 ──
@@ -1767,6 +1794,89 @@ document.addEventListener('keydown', e => {
   if (e.code === 'ArrowLeft')   audio.currentTime = Math.max(0, audio.currentTime - 5);
 });
 
+// ── MEDIASESSION (잠금화면 위젯) ──
+function updateMediaSessionMetadata(title, artist, artDataUrl) {
+  if (!('mediaSession' in navigator)) return;
+  const artwork = artDataUrl
+    ? [{ src: artDataUrl, sizes: '512x512', type: artDataUrl.startsWith('data:image/png') ? 'image/png' : 'image/jpeg' }]
+    : [];
+  navigator.mediaSession.metadata = new MediaMetadata({ title, artist, album: 'Feelgram Music', artwork });
+}
+
+function setupMediaSession() {
+  if (!('mediaSession' in navigator)) return;
+  navigator.mediaSession.setActionHandler('play',          () => { audio.play(); setPlayIcons(true); });
+  navigator.mediaSession.setActionHandler('pause',         () => { audio.pause(); setPlayIcons(false); });
+  navigator.mediaSession.setActionHandler('previoustrack', prevTrack);
+  navigator.mediaSession.setActionHandler('nexttrack',     nextTrack);
+  try { navigator.mediaSession.setActionHandler('seekbackward', null); } catch(e) {}
+  try { navigator.mediaSession.setActionHandler('seekforward',  null); } catch(e) {}
+}
+setupMediaSession();
+
+audio.addEventListener('play',  () => { if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing'; });
+audio.addEventListener('pause', () => { if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused'; });
+
+// ── STATE PERSISTENCE (localStorage) ──
+function saveState() {
+  try {
+    localStorage.setItem('fg_recent',    JSON.stringify(recentPlays.slice(0, 20)));
+    localStorage.setItem('fg_folder',    JSON.stringify(currentFolder));
+    localStorage.setItem('fg_queue',     JSON.stringify(currentQueue));
+    localStorage.setItem('fg_origQueue', JSON.stringify(originalQueue));
+    localStorage.setItem('fg_idx',       String(currentIdx));
+    localStorage.setItem('fg_shuffle',   String(shuffle));
+    localStorage.setItem('fg_repeat',    repeat);
+  } catch(e) {}
+}
+
+function restoreState() {
+  try {
+    const rp = localStorage.getItem('fg_recent');
+    if (rp) recentPlays = JSON.parse(rp);
+
+    const cf = localStorage.getItem('fg_folder');
+    if (cf !== null) currentFolder = JSON.parse(cf);
+
+    const cq = localStorage.getItem('fg_queue');
+    if (cq) currentQueue = JSON.parse(cq);
+
+    const oq = localStorage.getItem('fg_origQueue');
+    if (oq) originalQueue = JSON.parse(oq);
+
+    const ci = localStorage.getItem('fg_idx');
+    if (ci !== null) currentIdx = parseInt(ci);
+
+    const sh = localStorage.getItem('fg_shuffle');
+    if (sh !== null) shuffle = sh === 'true';
+
+    const re = localStorage.getItem('fg_repeat');
+    if (re) repeat = re;
+
+    // UI 복원
+    if (currentIdx >= 0 && currentQueue.length > 0) {
+      const fn = currentQueue[currentIdx];
+      const title = fn.replace(/\.(mp3|m4a|wav|ogg|flac|wmv)$/i, '');
+      const folderName = (currentFolder !== null && playlist[currentFolder]) ? playlist[currentFolder].folder : '';
+      document.getElementById('mpTitle').textContent  = title;
+      document.getElementById('mpSub').textContent    = folderName;
+      document.getElementById('fpTitle').textContent  = title;
+      document.getElementById('fpFolder').textContent = folderName;
+      document.title = title + ' — Feelgram Music';
+      // audio src 복원 (재생은 안 함, 탭 후 play 가능하도록)
+      audio.preload = 'none';
+      audio.src = 'music/' + encodeURIComponent(fn);
+      // 아트 복원
+      loadAlbumArt('music/' + encodeURIComponent(fn));
+      // 셔플/반복 버튼
+      ['fpShuffle','dShuffle'].forEach(id => { const b = document.getElementById(id); if(b) b.classList.toggle('active', shuffle); });
+      ['fpRepeat','dRepeat'].forEach(id => { const b = document.getElementById(id); if(b) b.classList.toggle('active', repeat !== 'none'); });
+      highlightPlaying(fn);
+      updateMediaSessionMetadata(title, folderName, artCache.has(fn) ? artCache.get(fn) : null);
+    }
+  } catch(e) {}
+}
+
 // ── HOME FEED TOGGLE ──
 function showHomeFeed() {
   const hv = document.getElementById('homeView');
@@ -1827,16 +1937,23 @@ function renderActivityCards() {
 }
 
 async function loadCardArt(fn, imgEl) {
+  imgEl.dataset.fn = fn;
+  if (artCache.has(fn)) {
+    imgEl.src = artCache.get(fn);
+    imgEl.onload = () => imgEl.classList.add('loaded');
+    return;
+  }
   try {
     const res = await fetch('music/' + encodeURIComponent(fn), { headers: { Range: 'bytes=0-327679' } });
     if (!res.ok && res.status !== 206) return;
     const art = extractID3Cover(new Uint8Array(await res.arrayBuffer()));
     if (!art) return;
     const blob = new Blob([art], { type: art[0] === 0x89 ? 'image/png' : 'image/jpeg' });
-    const src  = URL.createObjectURL(blob);
-    if (imgEl._blobUrl) URL.revokeObjectURL(imgEl._blobUrl);
-    imgEl._blobUrl = src;
-    imgEl.src = src;
+    const dataUrl = await new Promise(resolve => {
+      const r = new FileReader(); r.onload = e => resolve(e.target.result); r.readAsDataURL(blob);
+    });
+    artCache.set(fn, dataUrl);
+    imgEl.src = dataUrl;
     imgEl.onload = () => imgEl.classList.add('loaded');
   } catch(e) {}
 }
@@ -1853,8 +1970,13 @@ function switchTab(tabName, showFeed = true) {
   });
   if (tabName === 'home' && showFeed) showHomeFeed();
   if (tabName === 'search') {
-    renderRecentPlays();
-    setTimeout(() => { const inp = document.getElementById('stSearchInput'); if(inp) inp.focus(); }, 100);
+    // Clear search tab — show nothing until user types
+    const c = document.getElementById('stRecentContainer');
+    const l = document.getElementById('stSectionLabel');
+    const inp = document.getElementById('stSearchInput');
+    if (c) c.innerHTML = '';
+    if (l) l.style.display = 'none';
+    if (inp) { inp.value = ''; setTimeout(() => inp.focus(), 100); }
   }
 }
 
@@ -1921,7 +2043,7 @@ function playRecentItem(idx) {
     const q = this.value.trim().toLowerCase();
     const container = document.getElementById('stRecentContainer');
     const label     = document.getElementById('stSectionLabel');
-    if (!q) { label.textContent = 'RECENT'; renderRecentPlays(); return; }
+    if (!q) { label.style.display = 'none'; container.innerHTML = ''; return; }
     label.style.display = 'block';
     label.textContent = 'RESULTS';
     const hits = [];
