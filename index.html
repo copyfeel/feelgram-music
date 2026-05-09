@@ -652,6 +652,76 @@ main {
   .full-player { padding-top: env(safe-area-inset-top); }
 }
 
+/* ── HOME FEED ── */
+#homeView {
+  flex: 1; overflow-y: auto;
+  display: flex; flex-direction: column;
+}
+#mainContent { display: none; } /* hidden by default on mobile */
+@media (min-width: 768px) {
+  #homeView { display: none !important; }
+  #mainContent { display: flex !important; }
+}
+.ha-section { padding: 20px 0 8px; }
+.ha-label { font-size: 11px; font-weight: 700; letter-spacing: 0.9px; color: var(--text3); padding: 0 20px; margin-bottom: 12px; }
+.ha-tabs-row { display: flex; align-items: center; padding: 0 20px; margin-bottom: 14px; gap: 16px; }
+.ha-tab { font-size: 20px; font-weight: 700; color: var(--text3); background: none; border: none; cursor: pointer; padding: 0; transition: color .12s; }
+.ha-tab.active { color: var(--text); }
+.ha-more { margin-left: auto; font-size: 12px; font-weight: 600; color: var(--text2); background: none; border: none; cursor: pointer; }
+.ha-scroll {
+  overflow-x: auto; display: flex; gap: 14px;
+  padding: 0 20px 12px; -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.ha-scroll::-webkit-scrollbar { display: none; }
+.ha-card { flex-shrink: 0; width: 158px; cursor: pointer; }
+.ha-card:active { opacity: .8; }
+.ha-card-art {
+  width: 158px; height: 158px; border-radius: 14px;
+  background: var(--surface2); display: flex; align-items: center; justify-content: center;
+  font-size: 50px; margin-bottom: 8px; position: relative; overflow: hidden;
+}
+.ha-card-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 14px; display: none; }
+.ha-card-art img.loaded { display: block; }
+.ha-card-art img.loaded ~ .ha-art-fb { display: none; }
+.ha-card-controls {
+  position: absolute; bottom: 8px; left: 8px; display: flex; gap: 5px; z-index: 2;
+}
+.ha-ctrl-btn {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: rgba(0,0,0,0.52); display: flex; align-items: center; justify-content: center;
+}
+.ha-card-type { font-size: 12px; color: var(--text2); margin-bottom: 2px; }
+.ha-card-title { font-size: 14px; font-weight: 700; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ha-card-sub { font-size: 12px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.ha-empty { padding: 24px 20px; font-size: 13px; color: var(--text3); text-align: center; }
+
+/* Listen Later */
+.ll-section {
+  margin: 8px 16px 20px;
+  border-radius: 22px;
+  background: linear-gradient(140deg, #c8b8f8 0%, #f0c0d0 100%);
+  padding: 20px;
+  min-height: 150px;
+}
+.ll-header-row { display: flex; align-items: center; margin-bottom: 8px; }
+.ll-title { font-size: 26px; font-weight: 800; letter-spacing: -0.4px; flex: 1; }
+.ll-more-btn {
+  background: rgba(255,255,255,0.5); border: none; border-radius: 20px;
+  padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.ll-divider { height: 1px; background: rgba(0,0,0,0.1); margin: 10px 0 16px; }
+.ll-caught { font-size: 18px; font-weight: 700; text-align: center; margin-bottom: 4px; }
+.ll-sub { font-size: 13px; text-align: center; opacity: 0.65; }
+
+/* Back button in song list */
+.btn-back-home {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 14px; font-weight: 600; color: var(--text2);
+  padding: 10px 18px 0; background: none; border: none; cursor: pointer;
+}
+.btn-back-home:active { color: var(--text); }
+
 /* ── TAB PANELS ── */
 .tab-panel { display: none; flex: 1; flex-direction: column; overflow: hidden; min-height: 0; min-width: 0; }
 .tab-panel.active { display: flex; }
@@ -842,9 +912,36 @@ main {
 
     <!-- ① Home Tab -->
     <div class="tab-panel active" id="tabHome">
+
+      <!-- Home Feed -->
+      <div id="homeView">
+        <div class="ha-section">
+          <div class="ha-label">RECENT ACTIVITY</div>
+          <div class="ha-tabs-row">
+            <button class="ha-tab active" id="haTabPlayed" onclick="switchActivityTab('played')">Played</button>
+            <button class="ha-tab" id="haTabAdded" onclick="switchActivityTab('added')">Added</button>
+            <span class="ha-more">MORE</span>
+          </div>
+          <div class="ha-scroll" id="haScrollContainer">
+            <div class="ha-empty">재생한 곡이 없습니다</div>
+          </div>
+        </div>
+        <div class="ll-section">
+          <div class="ll-header-row">
+            <span class="ll-title">Listen Later</span>
+            <button class="ll-more-btn">MORE</button>
+          </div>
+          <div class="ll-divider"></div>
+          <p class="ll-caught">You're all caught up</p>
+          <p class="ll-sub">Go find more stuff to add to Listen Later.</p>
+        </div>
+      </div>
+
+      <!-- Song List (shown when folder selected) -->
       <main id="mainContent">
         <div class="empty"><div class="empty-icon">♪</div><p>폴더를 선택하세요</p></div>
       </main>
+
     </div>
 
     <!-- ② Search Tab -->
@@ -1236,7 +1333,10 @@ fetch('playlist.json')
   .then(data => {
     playlist = data;
     renderFolders();
-    if (playlist.length > 0) selectFolder(0);
+    if (playlist.length > 0) {
+      if (window.innerWidth >= 768) selectFolder(0); // desktop: auto-open first folder
+      // mobile: show home feed, user selects folder from drawer
+    }
   })
   .catch(() => {
     document.getElementById('folderList').innerHTML =
@@ -1258,11 +1358,17 @@ function selectFolder(idx) {
   document.querySelectorAll('.folder-item').forEach((el, i) => el.classList.toggle('active', i === idx));
   renderSongList(playlist[idx]);
   closeDrawer();
-  if (window.innerWidth < 768) switchTab('home');
+  if (window.innerWidth < 768) { switchTab('home', false); showSongList(); }
 }
 
 function renderSongList(folder) {
+  const backBtn = window.innerWidth < 768
+    ? `<button class="btn-back-home" onclick="showHomeFeed()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+        Home
+      </button>` : '';
   document.getElementById('mainContent').innerHTML = `
+    ${backBtn}
     <div class="list-header">
       <div class="list-header-row">
         <span class="lh-icon">♪</span>
@@ -1661,8 +1767,82 @@ document.addEventListener('keydown', e => {
   if (e.code === 'ArrowLeft')   audio.currentTime = Math.max(0, audio.currentTime - 5);
 });
 
+// ── HOME FEED TOGGLE ──
+function showHomeFeed() {
+  const hv = document.getElementById('homeView');
+  const mc = document.getElementById('mainContent');
+  if (hv) hv.style.display = '';
+  if (mc) mc.style.display = 'none';
+  renderActivityCards();
+}
+function showSongList() {
+  const hv = document.getElementById('homeView');
+  const mc = document.getElementById('mainContent');
+  if (hv) hv.style.display = 'none';
+  if (mc) mc.style.display = 'flex';
+}
+
+// ── ACTIVITY CARDS ──
+let activityTab = 'played';
+
+function switchActivityTab(tab) {
+  activityTab = tab;
+  document.getElementById('haTabPlayed').classList.toggle('active', tab === 'played');
+  document.getElementById('haTabAdded').classList.toggle('active', tab === 'added');
+  renderActivityCards();
+}
+
+function renderActivityCards() {
+  const container = document.getElementById('haScrollContainer');
+  if (!container) return;
+  const data = activityTab === 'played' ? recentPlays : [];
+  if (!data.length) {
+    container.innerHTML = `<div class="ha-empty">${activityTab === 'played' ? '재생한 곡이 없습니다' : '추가된 곡이 없습니다'}</div>`;
+    return;
+  }
+  container.innerHTML = data.map((r, i) => {
+    const title  = r.fn.replace(/\.(mp3|m4a|wav|ogg|flac|wmv)$/i, '');
+    const folder = (r.folderIdx !== null && playlist[r.folderIdx]) ? playlist[r.folderIdx].folder : '';
+    const icon   = (r.folderIdx !== null && playlist[r.folderIdx]) ? playlist[r.folderIdx].icon   : '♫';
+    return `<div class="ha-card" onclick="playRecentItem(${i})">
+      <div class="ha-card-art">
+        <img id="ha-img-${i}" alt="">
+        <span class="ha-art-fb">${icon}</span>
+        <div class="ha-card-controls">
+          <div class="ha-ctrl-btn">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
+          </div>
+        </div>
+      </div>
+      <div class="ha-card-type">Track</div>
+      <div class="ha-card-title">${esc(title)}</div>
+      <div class="ha-card-sub">${esc(folder)}</div>
+    </div>`;
+  }).join('');
+  // Load album art for first 6 cards
+  data.slice(0, 6).forEach((r, i) => {
+    const img = document.getElementById(`ha-img-${i}`);
+    if (img) loadCardArt(r.fn, img);
+  });
+}
+
+async function loadCardArt(fn, imgEl) {
+  try {
+    const res = await fetch('music/' + encodeURIComponent(fn), { headers: { Range: 'bytes=0-327679' } });
+    if (!res.ok && res.status !== 206) return;
+    const art = extractID3Cover(new Uint8Array(await res.arrayBuffer()));
+    if (!art) return;
+    const blob = new Blob([art], { type: art[0] === 0x89 ? 'image/png' : 'image/jpeg' });
+    const src  = URL.createObjectURL(blob);
+    if (imgEl._blobUrl) URL.revokeObjectURL(imgEl._blobUrl);
+    imgEl._blobUrl = src;
+    imgEl.src = src;
+    imgEl.onload = () => imgEl.classList.add('loaded');
+  } catch(e) {}
+}
+
 // ── TAB SWITCHING ──
-function switchTab(tabName) {
+function switchTab(tabName, showFeed = true) {
   const panels = { home: 'tabHome', search: 'tabSearch', library: 'tabLibrary', audio: 'tabAudio' };
   Object.entries(panels).forEach(([name, id]) => {
     const el = document.getElementById(id);
@@ -1671,6 +1851,7 @@ function switchTab(tabName) {
   document.querySelectorAll('.nav-item').forEach(item => {
     item.classList.toggle('active', item.dataset.tab === tabName);
   });
+  if (tabName === 'home' && showFeed) showHomeFeed();
   if (tabName === 'search') {
     renderRecentPlays();
     setTimeout(() => { const inp = document.getElementById('stSearchInput'); if(inp) inp.focus(); }, 100);
@@ -1684,6 +1865,10 @@ function addToRecent(fn, folderIdx) {
   recentPlays = recentPlays.filter(r => r.fn !== fn);
   recentPlays.unshift({ fn, folderIdx });
   if (recentPlays.length > 10) recentPlays.pop();
+  const hv = document.getElementById('homeView');
+  if (hv && hv.style.display !== 'none' && getComputedStyle(hv).display !== 'none') {
+    renderActivityCards();
+  }
 }
 
 function removeFromRecentIdx(idx) {
