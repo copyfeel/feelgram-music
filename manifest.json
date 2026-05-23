@@ -1,19 +1,29 @@
 {
   "name": "Feelgram Music",
   "short_name": "Feelgram",
-  "description": "Feelgram Music Player",
-  "start_url": "/",
-  "scope": "/",
-  "id": "/",
+  "description": "Personal music player by Copy — built as a standalone PWA.",
+  "categories": ["music", "entertainment", "lifestyle"],
+  "id": "https://feelgram-music.netlify.app/",
+  "start_url": "https://feelgram-music.netlify.app/?source=pwa",
+  "scope": "https://feelgram-music.netlify.app/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#f6f6f6",
   "theme_color": "#f6f6f6",
   "orientation": "portrait",
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "./icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }

@@ -3,24 +3,26 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="description" content="Feelgram Music — personal PWA music player by Copy.">
+
+<!-- PWA flags -->
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Feelgram Music">
+<meta name="application-name" content="Feelgram Music">
 <meta name="theme-color" content="#f6f6f6">
-<link rel="manifest" href="/manifest.json">
+
+<!-- Single canonical manifest reference + icon -->
+<link rel="manifest" href="./manifest.json">
+<link rel="canonical" href="https://feelgram-music.netlify.app/">
+<link rel="apple-touch-icon" sizes="192x192" href="./icon.png">
+<link rel="apple-touch-icon" sizes="512x512" href="./icon.png">
+<link rel="icon" type="image/png" href="./icon.png">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
-<!-- [1] PWA 매니페스트 (안드로이드, 최신 브라우저 앱 규격 동기화) -->
-<link rel="manifest" href="./manifest.json">
-  
-<!-- [2 ⭐] 우리가 만든 PNG 파일을 아이폰 홈 화면 아이콘으로 등록하는 핵심 코드! -->
-<link rel="apple-touch-icon" href="./icon.png">
-
-<!-- [3] 홈 화면 추가 시 사용자에게 표시되는 기본 앱 이름 설정 -->
-<meta name="apple-mobile-web-app-title" content="Music">
-
-<!-- [4] 네이티브 앱 모드 구동 (Safari의 URL 주소창 및 하단 네비게이터 숨김 처리) -->
-<meta name="apple-mobile-web-app-capable" content="yes">
 <title>Feelgram Music</title>
 <style>
 /* ── TOKENS ── */
@@ -277,6 +279,7 @@ main {
   min-width: 0;
   background: var(--bg);
 }
+/* Legacy class kept for any references — visually replaced by .list-hero */
 .list-header {
   background: var(--surface);
   padding: 16px 18px 14px;
@@ -289,28 +292,113 @@ main {
   gap: 10px;
 }
 .lh-icon { font-size: 22px; }
-.lh-name { font-size: 18px; font-weight: 700; flex: 1; }
+.lh-name { font-size: 22px; font-weight: 800; flex: 1; letter-spacing: -0.3px; }
 .lh-count { font-size: 12px; color: var(--text2); }
 .btn-play-all {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  margin-top: 10px;
-  background: #e8e8e8;
+  margin-top: 12px;
+  background: rgba(255,255,255,0.92);
   color: var(--text);
   border-radius: 20px;
-  padding: 4px 11px;
-  font-size: 11px;
-  font-weight: 600;
-  transition: opacity .15s;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transition: opacity .15s, transform .12s ease;
 }
-.btn-play-all:active { opacity: .75; }
+.btn-play-all:active { opacity: .85; transform: scale(0.96); }
+
+/* Hero header block — artist image stays fully crisp edge-to-edge.
+   The "fade into list" effect is moved to the list itself, not the image. */
+.list-hero {
+  position: relative;
+  flex-shrink: 0;
+  height: 220px;
+  overflow: hidden;
+  background: linear-gradient(160deg, #525968 0%, #2d3340 100%);
+}
+.list-hero-bg {
+  position: absolute; inset: 0;
+  background-size: cover;
+  /* Bias toward the upper portion of the photo — most artist promo shots
+     place the face there, so this acts as a "free" face-aware crop. */
+  background-position: center 28%;
+  filter: saturate(118%) contrast(106%);
+  opacity: 0;
+  transform: scale(1.03);
+  transition: opacity .55s ease, transform .8s ease;
+  /* Image stays fully opaque — no mask. The handoff to the list is handled
+     by the list's own top-edge mask (see .song-list below). */
+}
+.list-hero-bg.loaded { opacity: 1; transform: scale(1); }
+/* Tone overlay above the image — only the strongest band near the bottom,
+   for text legibility. No deep bottom dim since the list takes over there. */
+.list-hero-overlay {
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(to bottom,
+      rgba(0,0,0,0.20) 0%,
+      rgba(0,0,0,0.00) 22%,
+      rgba(0,0,0,0.00) 72%,
+      rgba(0,0,0,0.42) 100%);
+  pointer-events: none;
+}
+.list-hero-back {
+  position: absolute;
+  top: 10px; left: 10px;
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.28);
+  color: white;
+  border: none;
+  z-index: 2;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: background .15s ease;
+}
+.list-hero-back:active { background: rgba(0,0,0,0.5); }
+.list-hero-content {
+  position: absolute;
+  left: 0; right: 0; bottom: 14px;        /* sits inside the bottom dark band */
+  padding: 14px 22px 4px;
+  color: white;
+  z-index: 1;
+  /* Glow under text for legibility regardless of background */
+  text-shadow: 0 1px 4px rgba(0,0,0,0.55), 0 0 14px rgba(0,0,0,0.3);
+}
+.list-hero-content .lh-name { color: white; font-size: 26px; font-weight: 800; }
+.list-hero-content .lh-icon { color: rgba(255,255,255,0.92); }
+.list-hero-content .lh-count {
+  color: rgba(255,255,255,0.82);
+  font-weight: 600;
+  background: rgba(0,0,0,0.28);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
 
 .song-list {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 6px 8px 8px;
+  /* Larger top padding so the first row sits a bit lower than the hero edge,
+     and so it falls below the mask's fade zone when not scrolled. */
+  padding: 24px 8px 8px;
+  /* Top-edge fade. The first 18px of the scroll viewport fades from
+     transparent → solid. While at scrollTop=0 the padding occupies this
+     zone (empty, so nothing visible to fade). As the user scrolls up, song
+     rows pass through this band and fade out smoothly right at the seam
+     with the hero image — image itself stays untouched. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 18px, black 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, black 18px, black 100%);
 }
 .song-list::-webkit-scrollbar { width: 3px; }
 .song-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
@@ -520,33 +608,269 @@ main {
     rgba(255,255,255,0.86) 100%
   );
 }
-.full-player > *:not(.fp-bg):not(.fp-handle):not(.fp-close):not(.fp-controls):not(.fp-bottom-bar) { position: relative; z-index: 1; }
+.full-player > *:not(.fp-bg):not(.fp-handle):not(.fp-close):not(.fp-controls):not(.fp-bottom-bar):not(.fp-quality-badge):not(.fp-lyrics-view):not(.fp-lyrics-now) { position: relative; z-index: 1; }
 
-.fp-handle {
-  width: 36px; height: 4px;
-  background: rgba(0,0,0,0.18);
-  border-radius: 2px;
-  position: absolute;
-  top: calc(14px + env(safe-area-inset-top, 0px));
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 2;
-}
+.fp-handle { display: none; }
 .fp-close {
   position: absolute;
-  top: calc(28px + env(safe-area-inset-top, 0px));
+  top: calc(14px + env(safe-area-inset-top, 0px));
   left: 8px;
   width: 44px; height: 44px;
   display: flex; align-items: center; justify-content: center;
-  color: var(--text2);
+  color: rgba(0, 0, 0, 0.55);
   z-index: 2;
 }
 .fp-close:active { color: var(--text); }
 
+/* Quality badge — top center of full player */
+.fp-quality-badge {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 14px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.13);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 18px;
+  padding: 6px 14px 6px 10px;
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1px;
+  cursor: pointer;
+  transition: padding .25s ease, background .25s ease, border-color .25s ease;
+}
+.fp-quality-badge:active { opacity: .7; }
+.fp-quality-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #f5c542;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px rgba(245, 197, 66, 0.7);
+  /* Pulse with a hold at min size, then a soft-edged peak */
+  animation: qualityDotPulse 6s ease-in-out infinite;
+}
+.fp-quality-dot.lossy { background: #f5c542; box-shadow: 0 0 6px rgba(245, 197, 66, 0.7); }
+.fp-quality-dot.lossy-hq { background: #66d29a; box-shadow: 0 0 6px rgba(102, 210, 154, 0.7); }
+.fp-quality-dot.lossless { background: #4cb18a; box-shadow: 0 0 6px rgba(76, 177, 138, 0.7); }
+.fp-quality-dot.enhanced { background: #a78bfa; box-shadow: 0 0 6px rgba(167, 139, 250, 0.7); }
+.fp-quality-text { white-space: nowrap; }
+@keyframes qualityDotPulse {
+  /* 0%–5% (~0.3s of a 6s cycle): hold at minimum */
+  0%, 5%  { opacity: 0.40; transform: scale(0.55); filter: blur(0); }
+  /* 52%: peak — edge softened by a subtle blur to diffuse the halo */
+  52%     { opacity: 1;    transform: scale(1.00); filter: blur(0.5px); }
+  100%    { opacity: 0.40; transform: scale(0.55); filter: blur(0); }
+}
+
+/* Paused state — just the dot, no pill, NO animation */
+.fp-quality-badge.paused {
+  background: transparent;
+  border-color: transparent;
+  padding: 6px;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.fp-quality-badge.paused .fp-quality-text { display: none; }
+.fp-quality-badge.paused .fp-quality-dot {
+  animation: none;
+  opacity: 0.85;
+}
+
+/* Signal Path Sheet (slides up like other sheets) */
+.signal-path-sheet {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  max-height: 90vh;
+  background: var(--bg);
+  border-radius: 16px 16px 0 0;
+  z-index: 111;
+  transform: translateY(100%);
+  transition: transform .32s cubic-bezier(0.32, 0.72, 0, 1), background .25s ease;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.signal-path-sheet.open { transform: translateY(0); }
+.sp-header {
+  display: flex;
+  align-items: flex-start;
+  padding: 22px 20px 18px;
+  gap: 16px;
+  flex-shrink: 0;
+}
+.sp-close {
+  width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text2);
+  background: none; border: none;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+.sp-title-wrap { flex: 1; min-width: 0; }
+.sp-title {
+  font-family: 'Playfair Display', 'Times New Roman', Georgia, serif;
+  font-size: 32px;
+  font-weight: 500;
+  letter-spacing: -0.5px;
+  color: var(--text);
+  line-height: 1.1;
+}
+.sp-subtitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--text2);
+  margin-top: 4px;
+}
+.sp-stages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 20px 24px;
+  position: relative;
+}
+.sp-stage {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  padding: 8px 0;
+  position: relative;
+  cursor: pointer;
+}
+.sp-stage-icon-col {
+  width: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  position: relative;
+}
+.sp-stage-icon {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  border: 1.5px solid var(--text2);
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text);
+  position: relative;
+  z-index: 2;
+}
+.sp-stage-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--text);
+  margin: 4px 0;
+  z-index: 2;
+}
+.sp-stage-line {
+  position: absolute;
+  top: 0; bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1.5px;
+  background: var(--text3);
+  z-index: 1;
+}
+.sp-stage:first-child .sp-stage-line { top: 50%; }
+.sp-stage:last-child .sp-stage-line { bottom: 50%; }
+.sp-stage-info { flex: 1; min-width: 0; padding-top: 4px; }
+.sp-stage-title-row {
+  display: flex; align-items: center; gap: 7px;
+}
+.sp-stage-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.1px;
+}
+.sp-stage-info-icon {
+  width: 12px; height: 12px;
+  color: #a78bfa;
+  filter: drop-shadow(0 0 4px rgba(167, 139, 250, 0.55));
+}
+.sp-stage-detail {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: var(--text2);
+  margin-top: 2px;
+  margin-bottom: 14px;
+}
+.sp-stage:last-child .sp-stage-detail { margin-bottom: 0; }
+.sp-stage:active { background: rgba(0,0,0,0.03); }
+
+/* Stage info mini-modal */
+.stage-info-modal {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) scale(0.95);
+  background: var(--surface);
+  border-radius: 16px;
+  width: min(90%, 340px);
+  z-index: 130;
+  padding: 22px 22px 18px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .2s ease, transform .2s ease, visibility .2s ease;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+}
+.stage-info-modal.open {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, -50%) scale(1);
+}
+.stage-info-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 129;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .2s ease, visibility .2s ease;
+}
+.stage-info-backdrop.open { opacity: 1; visibility: visible; }
+.sim-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+.sim-body {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text2);
+  margin-bottom: 18px;
+}
+.sim-close-btn {
+  width: 100%;
+  padding: 11px 0;
+  border: none;
+  border-radius: 10px;
+  background: #7d57e5;
+  color: white;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .fp-art-wrap {
-  width: min(240px, 55vw);
-  height: min(240px, 55vw);
-  margin: 0 auto 28px;
+  /* Match the progress bar's visible width (.fp-progress has 32px padding both
+     sides, so the bar itself spans 100vw - 64px). Aspect ratio is square →
+     width and height grow together. */
+  --art-size: calc(100vw - 64px);
+  width: var(--art-size);
+  height: var(--art-size);
+  /* Negative top margin keeps the LAYOUT footprint at 240px (the old size),
+     so the visual bottom of the art stays exactly where it was —
+     the art only grows left, right, and upward. */
+  margin: calc(240px - var(--art-size)) auto 28px;
   flex-shrink: 0;
   transform: translateY(-35px);
 }
@@ -642,9 +966,25 @@ main {
 .fp-btn:active { opacity: .6; }
 .fp-btn.secondary {
   color: var(--text2);
-  width: 44px; height: 44px;
+  width: 28px; height: 28px;
+  position: relative;
 }
 .fp-btn.secondary.active { color: var(--text); }
+.fp-repeat-one {
+  position: absolute;
+  bottom: -2px; right: -2px;
+  font-family: 'Inter', sans-serif;
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--bg);
+  border-radius: 5px;
+  padding: 0 3px;
+  line-height: 10px;
+  display: none;
+  pointer-events: none;
+}
+.fp-btn.secondary.repeat-one .fp-repeat-one { display: block; }
 /* 플레이 버튼: 원 제거, 삼각형만. 색은 나머지 버튼보다 진하게 */
 .fp-btn.play {
   width: 64px; height: 64px;
@@ -653,6 +993,459 @@ main {
   transition: opacity .12s;
 }
 .fp-btn.play:active { opacity: .6; }
+
+/* Lyrics overlay — fully transparent so the player's gradient shows through */
+.fp-lyrics-view {
+  display: none;
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 50px);
+  left: 0; right: 0;
+  /* Lyrics extend further down (mini-now drops 50% of its height) */
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 373px);
+  z-index: 3;
+  background: transparent;
+  overflow: hidden;
+}
+.full-player.lyrics-mode .fp-lyrics-view { display: block; }
+/* Hide the big album art + centered title so the gradient shows through cleanly */
+.full-player.lyrics-mode .fp-art-wrap { visibility: hidden; }
+.full-player.lyrics-mode .fp-meta { visibility: hidden; }
+.fp-lyrics-scroll {
+  height: 100%;
+  overflow-y: auto;
+  /* Top padding lets the first line peek in from above; bottom padding lets the
+     last line linger before fading out below. */
+  padding: 32px 26px 32px;
+  scroll-behavior: smooth;
+  /* Fade in/out the top and bottom edges so entering/exiting lines are softer */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.4) 6%, black 14%, black 86%, rgba(0,0,0,0.4) 94%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.4) 6%, black 14%, black 86%, rgba(0,0,0,0.4) 94%, transparent 100%);
+}
+.fp-lyric-line {
+  font-family: 'Inter', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.30);
+  padding: 9px 0;
+  cursor: pointer;
+  will-change: transform, color, opacity;
+  transition: color .35s cubic-bezier(.4,0,.2,1),
+              transform .45s cubic-bezier(.34,1.2,.64,1),
+              opacity .35s ease,
+              font-weight .35s ease;
+}
+.fp-lyric-line.past { opacity: 0.45; color: rgba(0,0,0,0.36); }
+.fp-lyric-line.current {
+  color: var(--text);
+  font-weight: 800;
+  transform: scale(1.04);
+  transform-origin: left center;
+  opacity: 1;
+}
+/* Word-level karaoke: each word is a <span class="fp-word">.
+   On the current line, words flip between "sung" (filled) and "future" (dim)
+   based on per-word timing. The currently-singing word uses a background-clip
+   gradient driven by --progress (0–100) to fill left→right glyph by glyph. */
+.fp-word { display: inline; }
+.fp-word.sung { color: var(--text); }
+.fp-word.future { color: rgba(0,0,0,0.30); }
+.fp-word.singing {
+  background: linear-gradient(
+    90deg,
+    var(--text) 0%,
+    var(--text) calc(var(--progress, 0) * 1%),
+    rgba(0,0,0,0.30) calc(var(--progress, 0) * 1%),
+    rgba(0,0,0,0.30) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+/* When the line has no per-word timing, all words follow the line state */
+.fp-lyric-line:not(.has-words) .fp-word { color: inherit; background: none; -webkit-text-fill-color: currentColor; }
+.fp-lyrics-empty {
+  padding: 60px 24px;
+  text-align: center;
+  color: rgba(0,0,0,0.45);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.fp-lyrics-loading {
+  padding: 60px 24px;
+  text-align: center;
+  color: rgba(0,0,0,0.45);
+  font-size: 14px;
+}
+.fp-lyrics-now {
+  display: none;
+  position: absolute;
+  left: 0; right: 0;
+  /* Dropped down by ~50% of its own height (was 320; now 283) — progress bar stays put */
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 283px);
+  z-index: 3;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 22px;
+  cursor: pointer;
+  /* Subtle lighter veil — very slightly lighter than the player gradient
+     to softly delineate the section without a hard border */
+  background: rgba(255, 255, 255, 0.13);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.full-player.lyrics-mode .fp-lyrics-now { display: flex; }
+/* Small edit icon button in the mini-now bar */
+.fp-lyrics-edit-btn {
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(0, 0, 0, 0.45);
+  background: none; border: none;
+  flex-shrink: 0;
+}
+.fp-lyrics-edit-btn:active { color: var(--text); }
+/* Sync offset row inside the lyrics modal */
+.lm-sync-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 10px 0 14px;
+  padding: 10px 14px;
+  background: var(--surface2);
+  border-radius: 12px;
+}
+.lm-sync-labels { display: flex; flex-direction: column; gap: 2px; }
+.lm-sync-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px; font-weight: 600;
+  color: var(--text);
+}
+.lm-sync-auto {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px; font-weight: 500;
+  color: rgba(125, 87, 229, 0.85);
+  font-variant-numeric: tabular-nums;
+}
+.lm-sync-ctrls { display: flex; align-items: center; gap: 8px; }
+.lm-sync-btn {
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  border: none; border-radius: 50%;
+  background: rgba(125, 87, 229, 0.12);
+  color: #5a3fbf;
+  font-size: 18px; font-weight: 700;
+  font-family: 'Inter', sans-serif;
+  line-height: 1; cursor: pointer;
+}
+.lm-sync-btn:active { background: rgba(125, 87, 229, 0.25); }
+.lm-sync-val {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px; font-weight: 700;
+  color: var(--text2);
+  min-width: 44px; text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.lm-sync-val.nonzero { color: #5a3fbf; }
+.lm-sync-reset {
+  margin-left: 4px;
+  padding: 6px 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px; font-weight: 600;
+  background: none; border: 1px solid var(--border, rgba(0,0,0,0.12));
+  border-radius: 10px;
+  color: var(--text2);
+  cursor: pointer;
+}
+.lm-sync-reset:active { background: rgba(0,0,0,0.05); }
+.fp-lyrics-now-art {
+  width: 50px; height: 50px;
+  background: var(--surface2);
+  overflow: hidden;
+  flex-shrink: 0;
+  position: relative;
+}
+.fp-lyrics-now-art img { width: 100%; height: 100%; object-fit: cover; display: none; }
+.fp-lyrics-now-art img.loaded { display: block; }
+.fp-lyrics-now-info { flex: 1; min-width: 0; }
+.fp-lyrics-now-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fp-lyrics-now-artist {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  color: var(--text2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+/* Active lyrics icon: color tone shifts to a soft pastel green */
+#fpBbLyrics { transition: color .2s ease; }
+#fpBbLyrics.lyrics-active { color: #5fb878; }
+/* The lyrics glyph extends higher in its viewBox (alarm circle at top-right)
+   than the heart glyph does, so visually it floats above the heart. Shift the
+   SVG down so its visible top aligns with the heart icon's top. */
+#fpBbLyrics svg { transform: translateY(3px); }
+
+/* Output device picker sheet — slides up from the bottom of the full player */
+.output-sheet-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.32);
+  z-index: 130;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .28s ease, visibility .28s ease;
+}
+.output-sheet-backdrop.open { opacity: 1; visibility: visible; }
+.output-sheet {
+  position: fixed;
+  left: 12px; right: 12px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+  background: rgba(248, 248, 250, 0.94);
+  -webkit-backdrop-filter: blur(20px) saturate(170%);
+  backdrop-filter: blur(20px) saturate(170%);
+  border-radius: 18px;
+  z-index: 131;
+  padding: 10px 12px 14px;
+  transform: translateY(120%);
+  transition: transform .42s cubic-bezier(.22, .8, .26, 1);
+  box-shadow: 0 18px 50px rgba(0,0,0,0.22);
+}
+.output-sheet.open { transform: translateY(0); }
+.os-handle {
+  width: 36px; height: 4px;
+  background: rgba(0,0,0,0.18);
+  border-radius: 3px;
+  margin: 4px auto 10px;
+}
+.os-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 8px 12px;
+}
+.os-header-art {
+  width: 44px; height: 44px;
+  border-radius: 4px;
+  background: var(--surface2);
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+}
+.os-header-art img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: none;
+}
+.os-header-art img.loaded { display: block; }
+.os-header-art img.loaded ~ .os-header-art-fb { display: none; }
+.os-header-art-fb {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; color: var(--text2);
+}
+.os-header-info { flex: 1; min-width: 0; }
+.os-header-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px; font-weight: 700;
+  color: rgba(0,0,0,0.88);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  letter-spacing: -0.1px;
+}
+.os-header-artist {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px; font-weight: 500;
+  color: rgba(0,0,0,0.55);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-top: 1px;
+}
+.os-header-viz {
+  display: inline-flex; align-items: flex-end; gap: 2px;
+  height: 18px; padding-right: 4px;
+}
+.os-header-viz i {
+  display: inline-block;
+  width: 2px;
+  background: rgba(0,0,0,0.55);
+  border-radius: 1px;
+  animation: osVizPulse 1.2s ease-in-out infinite;
+}
+.os-header-viz i:nth-child(1) { height: 60%; animation-delay: 0s; }
+.os-header-viz i:nth-child(2) { height: 90%; animation-delay: .15s; }
+.os-header-viz i:nth-child(3) { height: 40%; animation-delay: .30s; }
+.os-header-viz i:nth-child(4) { height: 75%; animation-delay: .45s; }
+.os-header-viz i:nth-child(5) { height: 55%; animation-delay: .60s; }
+@keyframes osVizPulse {
+  0%, 100% { transform: scaleY(0.5); }
+  50%      { transform: scaleY(1.05); }
+}
+.os-list {
+  display: flex; flex-direction: column;
+  gap: 6px;
+}
+.os-row {
+  position: relative;
+  border-radius: 22px;
+  background: rgba(0,0,0,0.04);
+  cursor: pointer;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: background .22s ease;
+  height: 50px;
+}
+.os-row:active { background: rgba(0,0,0,0.07); }
+/* Inner content row — used both for the bottom dark-text layer and as a
+   duplicate inside the volume fill (white-text layer). */
+.os-row-layer {
+  position: absolute;
+  inset: 0;
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 16px;
+}
+.os-row-dark  { color: rgba(0,0,0,0.85); z-index: 1; }
+.os-row-light { color: #fff; z-index: 2; }
+.os-row-light .os-row-icon path,
+.os-row-light .os-row-icon line,
+.os-row-light .os-row-icon polyline,
+.os-row-light .os-row-icon rect { stroke: #fff; }
+.os-row-icon { flex-shrink: 0; }
+.os-row-label {
+  flex: 1; min-width: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.os-row-check, .os-row-vol-icon { flex-shrink: 0; display: none; }
+/* iPhone row — volume fill is the dark pill that grows with volume.
+   The duplicate .os-row-light overlays the same row, but its visible portion
+   is clipped via clip-path so it only shows over the dark fill. */
+.os-vol-fill {
+  position: absolute;
+  top: 0; bottom: 0; left: 0;
+  width: 0;
+  background: rgba(20, 20, 22, 0.92);
+  z-index: 2;
+  pointer-events: none;
+  transition: width .04s linear;
+  border-radius: 22px;
+}
+.os-row-iphone .os-row-light {
+  clip-path: inset(0 calc(100% - var(--vw, 0%)) 0 0);
+  -webkit-clip-path: inset(0 calc(100% - var(--vw, 0%)) 0 0);
+  pointer-events: none;
+}
+.os-row.selected[data-device="iphone"] { touch-action: none; }
+.os-row.selected[data-device="iphone"] .os-row-check { display: block; }
+.os-row.selected[data-device="iphone"].dragging .os-row-check { display: none; }
+.os-row.selected[data-device="iphone"].dragging .os-row-vol-icon { display: block; }
+/* External device rows (LG / iMac) — selected = full dark pill with white text */
+.os-row.selected:not([data-device="iphone"]) {
+  background: rgba(20,20,22,0.92);
+}
+.os-row.selected:not([data-device="iphone"]) .os-row-dark { color: white; }
+.os-row.selected:not([data-device="iphone"]) .os-row-dark .os-row-icon path,
+.os-row.selected:not([data-device="iphone"]) .os-row-dark .os-row-icon line,
+.os-row.selected:not([data-device="iphone"]) .os-row-dark .os-row-icon polyline,
+.os-row.selected:not([data-device="iphone"]) .os-row-dark .os-row-icon rect { stroke: white; }
+.os-row.selected:not([data-device="iphone"]) .os-row-check { display: block; }
+
+/* Lyrics edit modal (multi-line textarea) */
+.lyrics-modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 140;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .22s ease, visibility .22s ease;
+}
+.lyrics-modal-backdrop.open { opacity: 1; visibility: visible; }
+.lyrics-modal {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) scale(0.96);
+  width: min(92vw, 420px);
+  max-height: 80vh;
+  background: var(--surface);
+  border-radius: 14px;
+  z-index: 141;
+  padding: 18px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .22s ease, transform .22s ease, visibility .22s ease;
+  display: flex; flex-direction: column;
+  box-shadow: 0 16px 50px rgba(0,0,0,0.25);
+}
+.lyrics-modal.open {
+  opacity: 1; visibility: visible;
+  transform: translate(-50%, -50%) scale(1);
+}
+.lm-header { margin-bottom: 12px; }
+.lm-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+.lm-songinfo {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--text2);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lm-textarea {
+  width: 100%;
+  min-height: 260px;
+  max-height: 50vh;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: 'Inter', 'Apple SD Gothic Neo', 'Noto Sans KR', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+  outline: none;
+  resize: vertical;
+  white-space: pre-wrap;
+}
+.lm-textarea:focus { border-color: #7d57e5; }
+.lm-tip {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  color: var(--text2);
+  margin: 8px 0 14px;
+}
+.lm-tip code {
+  background: var(--surface2);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 10px;
+}
+.lm-buttons { display: flex; gap: 8px; }
+.lm-btn {
+  padding: 10px 0;
+  border: none;
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  flex: 1;
+}
+.lm-btn-cancel { background: var(--surface2); color: var(--text); }
+.lm-btn-clear { background: rgba(255, 87, 87, 0.12); color: #d04949; }
+.lm-btn-save { background: #7d57e5; color: white; }
+.lm-btn-save:disabled { opacity: .5; cursor: not-allowed; }
 
 /* 풀플레이어 하단 메뉴바 */
 .fp-bottom-bar {
@@ -670,7 +1463,7 @@ main {
 .fp-bb-btn {
   width: 28px; height: 28px;
   display: flex; align-items: center; justify-content: center;
-  color: #878787;
+  color: #404040;
   flex-shrink: 0;
   transition: opacity .12s;
   background: none;
@@ -723,11 +1516,8 @@ main {
   flex: 1; overflow-y: auto;
   display: flex; flex-direction: column;
 }
-#mainContent { display: none; } /* hidden by default on mobile */
-@media (min-width: 768px) {
-  #homeView { display: none !important; }
-  #mainContent { display: flex !important; }
-}
+#mainContent { display: none; } /* hidden by default on mobile and desktop;
+   JS shows it via showSongList() when an artist is selected. */
 .ha-section { padding: 18px 0 6px; }
 .ha-label { font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 1px; color: var(--text3); padding: 0 20px; margin-bottom: 10px; }
 .ha-tabs-row { display: flex; align-items: center; padding: 0 20px; margin-bottom: 12px; gap: 14px; }
@@ -740,8 +1530,17 @@ main {
   scrollbar-width: none;
 }
 .ha-scroll::-webkit-scrollbar { display: none; }
-.ha-card { flex-shrink: 0; width: 158px; cursor: pointer; }
+.ha-card {
+  flex-shrink: 0;
+  width: 158px;
+  cursor: pointer;
+  touch-action: pan-x;
+  will-change: transform, opacity;
+}
 .ha-card:active { opacity: .8; }
+.ha-card.swiping { transition: none; }
+.ha-card.snap-back { transition: transform .25s cubic-bezier(.4,0,.2,1), opacity .25s ease; }
+.ha-card.flick-off { transition: transform .28s cubic-bezier(.4,0,.2,1), opacity .28s ease; }
 .ha-card-art {
   width: 158px; height: 158px; border-radius: 0;
   background: var(--surface2); display: flex; align-items: center; justify-content: center;
@@ -853,12 +1652,42 @@ main {
   gap: 10px;
   padding: 5px 0;
   cursor: pointer;
+}
+/* Cascade drop-in is applied to the wrapping .ra-row so the inner content's
+   horizontal swipe transform doesn't fight with the animation's filled state. */
+.ra-row {
+  position: relative;
+  overflow: hidden;
+  background: transparent;
   opacity: 0;
   transform: translateY(-30px);
 }
-.ra-screen.cascade .ra-item {
+.ra-screen.cascade .ra-row {
   animation: raItemDrop .35s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
   animation-delay: calc(var(--idx, 0) * 0.04s);
+}
+.ra-delete-bg {
+  position: absolute;
+  inset: 0;
+  display: flex; align-items: center; justify-content: flex-start;
+  gap: 8px;
+  padding-left: 22px;
+  color: white;
+  background: linear-gradient(90deg, #e54e4e 0%, #d04949 100%);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px; font-weight: 700;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .12s ease;
+}
+.ra-row.swiping .ra-delete-bg { opacity: 1; }
+.ra-swipe-content {
+  position: relative;
+  z-index: 1;
+  background: var(--bg, #fff);
+  transform: translateX(0);
+  will-change: transform;
+  touch-action: pan-y;
 }
 @keyframes raItemDrop {
   from { opacity: 0; transform: translateY(-30px); }
@@ -1189,6 +2018,75 @@ main {
   color: var(--text2);
   background: none; border: none;
 }
+/* Play / Shuffle action buttons row */
+.ll-actions-row {
+  display: flex; gap: 10px;
+  padding: 4px 20px 14px;
+  flex-shrink: 0;
+}
+.ll-action-btn {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center;
+  gap: 8px;
+  height: 42px;
+  border-radius: 10px;
+  border: none;
+  background: rgba(0,0,0,0.05);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px; font-weight: 600;
+  letter-spacing: -0.1px;
+  cursor: pointer;
+  transition: background .15s ease, transform .12s ease, opacity .15s ease;
+}
+.ll-action-btn:active { transform: scale(0.97); background: rgba(0,0,0,0.08); }
+.ll-action-btn.ll-action-primary {
+  background: #7d57e5;
+  color: white;
+}
+.ll-action-btn.ll-action-primary:active { background: #6845c9; }
+.ll-action-btn:disabled { opacity: .45; cursor: not-allowed; }
+.ll-action-btn:disabled:active { transform: none; }
+/* Played / Unplayed filter tabs */
+.ll-filter-row {
+  display: flex; gap: 6px;
+  padding: 0 20px 12px;
+  flex-shrink: 0;
+}
+.ll-filter-tab {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 15px;
+  border: 1px solid var(--border, rgba(0,0,0,0.12));
+  background: transparent;
+  color: var(--text2);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px; font-weight: 600;
+  letter-spacing: -0.1px;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+.ll-filter-tab:active { background: rgba(0,0,0,0.04); }
+.ll-filter-tab.active {
+  background: rgba(20,20,22,0.92);
+  color: white;
+  border-color: rgba(20,20,22,0.92);
+}
+.ll-filter-count {
+  font-size: 10px; font-weight: 700;
+  background: rgba(0,0,0,0.08);
+  color: var(--text2);
+  padding: 1px 6px;
+  border-radius: 8px;
+  min-width: 16px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.ll-filter-tab.active .ll-filter-count {
+  background: rgba(255,255,255,0.22);
+  color: white;
+}
 .ll-list-wrap {
   flex: 1;
   overflow-y: auto;
@@ -1200,13 +2098,10 @@ main {
   gap: 10px;
   padding: 7px 16px;
   cursor: pointer;
-  opacity: 0;
-  transform: translateY(-30px);
 }
-.ll-screen.cascade .ll-item {
-  animation: raItemDrop .35s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-  animation-delay: calc(var(--idx, 0) * 0.04s);
-}
+/* Cascade drop-in is applied to the wrapping .ll-row so that the inner
+   .ll-swipe-content's transform (used for horizontal swipe) is not fighting
+   with the animation's final filled state. */
 .ll-item-art {
   width: 44px; height: 44px;
   flex-shrink: 0;
@@ -1279,6 +2174,46 @@ main {
 .ll-item.played .ll-item-art,
 .ll-item.played .ll-item-info {
   opacity: 0.45;
+}
+/* Swipe-to-delete row. The row is a positioning context whose background
+   shows the Delete affordance; the inner .ll-swipe-content is the content
+   that translates horizontally as the user drags. */
+.ll-row {
+  position: relative;
+  overflow: hidden;
+  background: transparent;
+  opacity: 0;
+  transform: translateY(-30px);
+}
+.ll-screen.cascade .ll-row {
+  animation: raItemDrop .35s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  animation-delay: calc(var(--idx, 0) * 0.04s);
+}
+.ll-delete-bg {
+  position: absolute;
+  inset: 0;
+  display: flex; align-items: center; justify-content: flex-start;
+  gap: 8px;
+  padding-left: 22px;
+  color: white;
+  background: linear-gradient(90deg, #e54e4e 0%, #d04949 100%);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px; font-weight: 700;
+  /* Stay invisible until the row is actively being swiped — otherwise the red
+     panel would peek through while the screen opens and cascades the rows in. */
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .12s ease;
+}
+.ll-row.swiping .ll-delete-bg { opacity: 1; }
+.ll-delete-text { font-size: 13px; }
+.ll-swipe-content {
+  position: relative;
+  z-index: 1;
+  background: var(--bg, #fff);
+  transform: translateX(0);
+  will-change: transform;
+  touch-action: pan-y;
 }
 
 /* ── Add-to-Playlist Sheet (matches Image #19) ── */
@@ -2230,6 +3165,387 @@ main {
   border-radius: 50%; box-shadow: 0 1px 4px rgba(0,0,0,0.25);
   top: 50%; transform: translate(-50%, -50%); pointer-events: none;
 }
+
+/* ── MUSE Audio Tab (replaces old audio-tab) ── */
+.muse-tab {
+  flex: 1;
+  overflow-y: auto;
+  background: linear-gradient(to bottom, #f7d6d2 0%, #e9cce0 35%, #d8c8eb 70%, #c8c0e8 100%);
+  padding: 0;
+}
+.muse-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 22px 20px 8px;
+}
+.muse-title {
+  font-family: 'Playfair Display', 'Times New Roman', Georgia, serif;
+  font-size: 54px;
+  font-weight: 500;
+  letter-spacing: -1px;
+  color: var(--text);
+  line-height: 1;
+}
+.muse-subtitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: var(--text);
+  margin-top: 4px;
+  opacity: 0.85;
+}
+.muse-profile-btn {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  display: flex; align-items: center; justify-content: center;
+  border: none;
+  color: var(--text2);
+  margin-top: 8px;
+}
+
+.muse-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 12px;
+}
+.muse-section-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+}
+.muse-edit-btn {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--text2);
+  background: none; border: none;
+  cursor: pointer;
+}
+.muse-edit-btn.editing { color: #7d57e5; }
+
+.muse-presets-row {
+  display: flex;
+  gap: 16px;
+  padding: 0 20px 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.muse-presets-row::-webkit-scrollbar { display: none; }
+.muse-preset {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  background: none; border: none;
+  cursor: pointer;
+  position: relative;
+}
+.muse-preset-circle {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  border: 1.5px solid var(--text2);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text2);
+  background: rgba(255, 255, 255, 0.15);
+  transition: all .15s ease;
+}
+.muse-preset.active .muse-preset-circle {
+  border-color: var(--text);
+  color: var(--text);
+}
+.muse-preset.add .muse-preset-circle {
+  border-style: dashed;
+}
+.muse-preset-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--text2);
+  font-weight: 500;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.muse-preset.active .muse-preset-label { color: var(--text); font-weight: 700; }
+.muse-preset-delete {
+  position: absolute;
+  top: -2px; right: -2px;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: #ff5757;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  border: none;
+  display: none;
+  align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.muse-presets-row.editing .muse-preset:not(.add) .muse-preset-delete { display: flex; }
+
+.muse-playing {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 32px 20px 14px;
+}
+.muse-playing-info { flex: 1; }
+.muse-playing-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text2);
+}
+.muse-playing-device {
+  font-family: 'Inter', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  margin-top: 2px;
+}
+.muse-device-gear {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.4);
+  border: none;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text2);
+}
+
+.muse-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 0 16px 32px;
+}
+.muse-card {
+  background: rgba(255, 255, 255, 0.22);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  border-radius: 18px;
+  padding: 18px 16px;
+  min-height: 170px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: background .15s ease;
+}
+.muse-card:active { background: rgba(255, 255, 255, 0.35); }
+.muse-card-title {
+  font-family: 'Playfair Display', 'Times New Roman', Georgia, serif;
+  font-size: 24px;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.1;
+  position: relative;
+  z-index: 2;
+  letter-spacing: -0.3px;
+}
+.muse-card-sub {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--text2);
+  margin-top: 4px;
+  position: relative;
+  z-index: 2;
+}
+.muse-card-toggle {
+  position: absolute;
+  bottom: 14px; left: 14px;
+  width: 40px; height: 22px;
+  border-radius: 11px;
+  border: 1.5px solid rgba(0,0,0,0.3);
+  background: rgba(255, 255, 255, 0.4);
+  z-index: 2;
+  transition: background .2s ease, border-color .2s ease;
+}
+.muse-card-toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 15px; height: 15px;
+  background: white;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+  transition: transform .22s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.muse-card.active .muse-card-toggle {
+  background: #7d57e5;
+  border-color: #7d57e5;
+  box-shadow: 0 2px 10px rgba(125, 87, 229, 0.45);
+}
+.muse-card.active .muse-card-toggle::after { transform: translateX(17px); }
+.muse-card.active {
+  background: rgba(125, 87, 229, 0.18);
+  box-shadow: inset 0 0 0 1.5px rgba(125, 87, 229, 0.35);
+}
+.muse-card.active .muse-card-title { color: #5b3acc; }
+.muse-card-illust {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.55;
+}
+
+/* Device modal */
+.device-screen {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  bottom: calc(var(--mini-h) + var(--nav-h) + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(to bottom, #e5d8f0 0%, #d8c8eb 100%);
+  z-index: 37;
+  transform: translateX(100%);
+  transition: transform .35s cubic-bezier(0.32, 0.72, 0, 1);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.device-screen.open { transform: translateX(0); }
+.device-header {
+  display: flex;
+  align-items: flex-start;
+  padding: env(safe-area-inset-top, 0px) 18px 8px;
+  gap: 12px;
+}
+.device-close {
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text);
+  background: none; border: none;
+  margin-top: 14px;
+}
+.device-title {
+  font-family: 'Playfair Display', 'Times New Roman', Georgia, serif;
+  font-size: 42px;
+  font-weight: 500;
+  letter-spacing: -0.5px;
+  color: var(--text);
+  flex: 1;
+  padding-top: 10px;
+}
+.device-gear {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  border: none;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text2);
+  margin-top: 16px;
+}
+.device-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 22px 0;
+  color: var(--text2);
+}
+.device-info-name {
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+}
+.device-badge {
+  margin: 22px 22px 0;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 16px;
+  padding: 7px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  align-self: flex-start;
+  margin-left: 22px;
+  width: auto;
+  max-width: max-content;
+}
+.device-badge-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #5ce0a0;
+}
+
+/* New preset name dialog reuses .newpl-dialog styles */
+
+/* ──────────────────────────────────────────────────────────────────────
+   DESKTOP HOME LAYOUT (≥ 768 px)
+   Mirrors the mobile layout — home feed (Recent Activity + Listen Later),
+   mini-player + bottom-nav pinned to the bottom, sticky header with a
+   hamburger that toggles the artist drawer as a slide-in panel.
+   Wrapped in a single @media block to leave the mobile cascade untouched.
+   ────────────────────────────────────────────────────────────────────── */
+@media (min-width: 768px) {
+  /* Sticky header */
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--bg);
+    -webkit-backdrop-filter: saturate(180%) blur(16px);
+    backdrop-filter: saturate(180%) blur(16px);
+  }
+
+  /* Reveal the hamburger so the drawer becomes a toggle, not a sidebar */
+  .btn-playlist { display: flex !important; }
+  .btn-close-drawer { display: flex !important; }
+
+  /* Drawer = slide-in panel (override the persistent-sidebar desktop styles) */
+  .drawer {
+    position: fixed !important;
+    top: 0; left: 0; bottom: 0;
+    width: 320px;
+    transform: translateX(-100%) !important;
+    transition: transform .26s cubic-bezier(.4,0,.2,1) !important;
+    box-shadow: 4px 0 24px rgba(0,0,0,0.18) !important;
+    border-right: 1px solid var(--border) !important;
+    background: var(--surface);
+    z-index: 120;
+  }
+  .drawer.open { transform: translateX(0) !important; }
+  .drawer-overlay {
+    display: block !important;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.4);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .22s ease, visibility .22s ease;
+    z-index: 119;
+  }
+  .drawer-overlay.open { opacity: 1; visibility: visible; }
+
+  /* The cascade now leaves #homeView visible and #mainContent hidden by
+     default on desktop too; JS toggles via showHomeFeed / showSongList. */
+
+  /* Show bottom nav at the very bottom (it's hidden by an earlier desktop
+     rule — re-enable here so the layout matches mobile). */
+  .bottom-nav { display: flex !important; }
+
+  /* Center the content column on wide screens so the home feed doesn't
+     stretch to fill ultra-wide displays. */
+  .body-wrap { justify-content: center; }
+  .tab-panel.active {
+    max-width: 720px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  .mini-player {
+    max-width: 720px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  .bottom-nav {
+    max-width: 720px;
+    width: 100%;
+    margin: 0 auto;
+  }
+}
 </style>
 </head>
 <body>
@@ -2375,71 +3691,72 @@ main {
       </div>
     </div>
 
-    <!-- ④ Audio Control Tab -->
+    <!-- ④ MUSE (Audio) Tab -->
     <div class="tab-panel" id="tabAudio">
-      <div class="audio-tab">
-        <div class="at-header">
-          <div class="at-header-text">
-            <span class="at-playing-to">Playing to</span>
-            <span class="at-device">스피커</span>
+      <div class="muse-tab">
+        <div class="muse-header">
+          <div>
+            <h1 class="muse-title">MUSE</h1>
+            <div class="muse-subtitle">Precision Audio Control</div>
           </div>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+          <button class="muse-profile-btn" aria-label="프로필">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4"/></svg>
+          </button>
         </div>
-        <div class="at-grid">
-          <!-- Equalizer -->
-          <div class="at-card at-card-clickable">
-            <div class="at-card-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
-            </div>
-            <div class="at-card-title">Equalizer</div>
-            <div class="at-card-sub">Custom</div>
-          </div>
-          <!-- Headphone EQ -->
-          <div class="at-card at-card-clickable">
-            <div class="at-card-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3z"/><path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
-            </div>
-            <div class="at-card-title">Headphone EQ</div>
-            <div class="at-card-sub">Off</div>
-          </div>
-          <!-- Crossfeed -->
-          <div class="at-card">
-            <div class="at-card-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-            </div>
-            <div class="at-card-title">Crossfeed</div>
-            <div class="at-toggle-row">
-              <span class="at-card-sub">Stereo mix</span>
-              <div class="toggle-sw" id="toggleCrossfeed" data-id="crossfeed"></div>
-            </div>
-          </div>
-          <!-- Volume leveling -->
-          <div class="at-card">
-            <div class="at-card-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-            </div>
-            <div class="at-card-title">Volume leveling</div>
-            <div class="at-toggle-row">
-              <span class="at-card-sub">Auto</span>
-              <div class="toggle-sw" id="toggleVolLevel" data-id="volLevel"></div>
-            </div>
-          </div>
+
+        <div class="muse-section-header">
+          <h2 class="muse-section-title">Presets</h2>
+          <button class="muse-edit-btn" id="museEditBtn" onclick="toggleMuseEdit()">EDIT</button>
         </div>
-        <!-- Balance -->
-        <div class="at-balance-card">
-          <div class="at-balance-title">
-            Balance
-            <span class="at-balance-val" id="balanceVal">C</span>
+        <div class="muse-presets-row" id="musePresetsRow"></div>
+
+        <div class="muse-playing">
+          <div class="muse-playing-info">
+            <div class="muse-playing-label">Playing to</div>
+            <div class="muse-playing-device" id="musePlayingDevice">스피커</div>
           </div>
-          <div class="at-balance-row">
-            <span class="at-balance-side">L</span>
-            <div class="at-balance-track-wrap" id="balanceTrackWrap">
-              <div class="at-balance-track" id="balanceTrack">
-                <div class="at-balance-fill" id="balanceFill"></div>
-                <div class="at-balance-thumb" id="balanceThumb"></div>
-              </div>
-            </div>
-            <span class="at-balance-side">R</span>
+          <button class="muse-device-gear" onclick="openDeviceModal()" aria-label="기기 설정">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="muse-cards">
+          <div class="muse-card" id="museCardEq" onclick="toggleEffect('eq')">
+            <div class="muse-card-title">Equalizer</div>
+            <div class="muse-card-sub">5-band</div>
+            <svg class="muse-card-illust" viewBox="0 0 200 200" preserveAspectRatio="none">
+              <path d="M0 130 Q40 90 80 110 T160 130 T200 100" stroke="rgba(125,87,229,0.4)" stroke-width="2.5" fill="none"/>
+              <path d="M0 145 Q40 105 80 130 T160 145 T200 120" stroke="rgba(125,87,229,0.25)" stroke-width="2" fill="none"/>
+            </svg>
+            <div class="muse-card-toggle"></div>
+          </div>
+          <div class="muse-card" id="museCardHpEq" onclick="toggleEffect('headphoneEq')">
+            <div class="muse-card-title">Headphone<br>EQ</div>
+            <svg class="muse-card-illust" viewBox="0 0 200 200">
+              <path d="M40 130 V100 a60 60 0 0 1 120 0 V130" stroke="rgba(125,87,229,0.4)" stroke-width="3" fill="none"/>
+              <rect x="30" y="125" width="22" height="32" rx="4" fill="rgba(125,87,229,0.3)"/>
+              <rect x="148" y="125" width="22" height="32" rx="4" fill="rgba(125,87,229,0.3)"/>
+            </svg>
+            <div class="muse-card-toggle"></div>
+          </div>
+          <div class="muse-card" id="museCardCrossfeed" onclick="toggleEffect('crossfeed')">
+            <div class="muse-card-title">Crossfeed</div>
+            <div class="muse-card-sub">700 Hz · +6dB</div>
+            <svg class="muse-card-illust" viewBox="0 0 200 200">
+              <circle cx="60" cy="140" r="38" fill="none" stroke="rgba(125,87,229,0.35)" stroke-width="2"/>
+              <circle cx="140" cy="140" r="38" fill="none" stroke="rgba(125,87,229,0.35)" stroke-width="2"/>
+            </svg>
+            <div class="muse-card-toggle"></div>
+          </div>
+          <div class="muse-card" id="museCardVolLevel" onclick="toggleEffect('volumeLeveling')">
+            <div class="muse-card-title">Volume<br>leveling</div>
+            <svg class="muse-card-illust" viewBox="0 0 200 200">
+              <path d="M0 150 L40 130 L80 145 L120 120 L160 138 L200 125" stroke="rgba(125,87,229,0.4)" stroke-width="2.5" fill="none"/>
+            </svg>
+            <div class="muse-card-toggle"></div>
           </div>
         </div>
       </div>
@@ -2528,12 +3845,10 @@ main {
       <span class="nav-label">Library</span>
     </button>
     <button class="nav-item" data-tab="audio" onclick="switchTab('audio')">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-        <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
-        <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3z"/>
-        <path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 12 Q6 4 9 12 T15 12 T21 12"/>
       </svg>
-      <span class="nav-label">Audio</span>
+      <span class="nav-label">Muse</span>
     </button>
   </nav>
 
@@ -2551,6 +3866,30 @@ main {
       <polyline points="6 9 12 15 18 9"/>
     </svg>
   </button>
+  <button class="fp-quality-badge" id="fpQualityBadge" onclick="openSignalPath()" aria-label="음질 정보">
+    <span class="fp-quality-dot" id="fpQualityDot"></span>
+    <span class="fp-quality-text" id="fpQualityText">Lossy</span>
+  </button>
+  <!-- Lyrics overlay (Roon ARC-style) -->
+  <div class="fp-lyrics-view" id="fpLyricsView">
+    <div class="fp-lyrics-scroll" id="fpLyricsScroll">
+      <div class="fp-lyrics-loading">Loading lyrics...</div>
+    </div>
+  </div>
+  <!-- Now-playing strip (separate, sits above progress in lyrics mode) -->
+  <div class="fp-lyrics-now" id="fpLyricsNow" onclick="toggleLyrics()" role="button" aria-label="가사 닫기">
+    <div class="fp-lyrics-now-art"><img id="fpLyricsArt" alt=""></div>
+    <div class="fp-lyrics-now-info">
+      <div class="fp-lyrics-now-title" id="fpLyricsTitle">—</div>
+      <div class="fp-lyrics-now-artist" id="fpLyricsArtist"></div>
+    </div>
+    <button class="fp-lyrics-edit-btn" onclick="event.stopPropagation(); openLyricsModal()" aria-label="가사 편집">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 20h9"/>
+        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"/>
+      </svg>
+    </button>
+  </div>
   <div class="fp-art-wrap">
     <div class="fp-art" id="fpArt">
       <img id="fpArtImg" alt="">
@@ -2574,9 +3913,11 @@ main {
   </div>
   <div class="fp-controls">
     <button class="fp-btn secondary" id="fpShuffle" title="셔플">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/>
-        <polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 5 L21 19"/>
+        <polyline points="17 19 21 19 21 15"/>
+        <path d="M3 19 L21 5"/>
+        <polyline points="17 5 21 5 21 9"/>
       </svg>
     </button>
     <button class="fp-btn" id="fpPrev">
@@ -2595,10 +3936,11 @@ main {
       </svg>
     </button>
     <button class="fp-btn secondary" id="fpRepeat" title="반복">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
         <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
       </svg>
+      <span class="fp-repeat-one">1</span>
     </button>
   </div>
   <!-- 풀플레이어 하단 메뉴바 -->
@@ -2619,22 +3961,33 @@ main {
       </svg>
     </button>
     <!-- ③ 출력 장치 (smart speaker) -->
-    <button class="fp-bb-btn output-btn" id="fpBbOutput" aria-label="출력 장치">
-      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="square" stroke-linejoin="miter">
-        <rect x="5.5" y="3" width="13" height="18"/>
-        <circle cx="12" cy="9" r="1.8"/>
+    <button class="fp-bb-btn output-btn" id="fpBbOutput" aria-label="출력 장치" onclick="openOutputSheet()">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="5.5" y="3" width="13" height="18" rx="1.2"/>
+        <circle cx="12" cy="9.3" r="2.7"/>
+        <circle cx="12" cy="14.5" r="0.75" fill="currentColor" stroke="none"/>
       </svg>
     </button>
     <!-- ④ 가사 (마이크 + 시계) -->
-    <button class="fp-bb-btn" id="fpBbLyrics" aria-label="가사">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M11 1.5a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0v-6a3 3 0 0 0-3-3z"/>
-        <path d="M16 10v.5a5 5 0 0 1-10 0V10"/>
-        <line x1="11" y1="15.5" x2="11" y2="19"/>
-        <line x1="8" y1="19" x2="14" y2="19"/>
-        <circle cx="18" cy="6" r="3.6" fill="white" stroke="currentColor" stroke-width="1.8"/>
-        <line x1="18" y1="3.8" x2="18" y2="6"/>
-        <line x1="18" y1="6" x2="19.7" y2="6"/>
+    <button class="fp-bb-btn" id="fpBbLyrics" aria-label="가사" onclick="toggleLyrics()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <defs>
+          <linearGradient id="fpLyricsGradStroke" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#a78bfa"/>
+            <stop offset="100%" stop-color="#6d4cdc"/>
+          </linearGradient>
+          <linearGradient id="fpLyricsGradFill" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ffffff"/>
+            <stop offset="100%" stop-color="#f0eaff"/>
+          </linearGradient>
+        </defs>
+        <path class="lyric-stroke" stroke="currentColor" d="M11 1.5a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0v-6a3 3 0 0 0-3-3z"/>
+        <path class="lyric-stroke" stroke="currentColor" d="M16 10v.5a5 5 0 0 1-10 0V10"/>
+        <line class="lyric-stroke" stroke="currentColor" x1="11" y1="15.5" x2="11" y2="19"/>
+        <line class="lyric-stroke" stroke="currentColor" x1="8" y1="19" x2="14" y2="19"/>
+        <circle class="lyric-fill lyric-stroke" cx="18" cy="6" r="3.6" fill="white" stroke="currentColor" stroke-width="1.8"/>
+        <line class="lyric-stroke" stroke="currentColor" x1="18" y1="3.8" x2="18" y2="6"/>
+        <line class="lyric-stroke" stroke="currentColor" x1="18" y1="6" x2="19.7" y2="6"/>
       </svg>
     </button>
     <!-- ⑤ 더보기 (•••) -->
@@ -2728,6 +4081,15 @@ main {
         </svg>
       </span>
       <span id="asListenLaterText">Listen Later</span>
+    </button>
+    <!-- Per-song played/unplayed toggle — only shown when the song is in Listen Later -->
+    <button class="as-menu-item" id="asPlayedToggleBtn" onclick="asTogglePlayed()" style="display:none">
+      <span class="as-menu-item-icon" id="asPlayedToggleIcon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </span>
+      <span id="asPlayedToggleText">Mark as played</span>
     </button>
     <button class="as-menu-item" onclick="asAddToPlaylist()">
       <span class="as-menu-item-icon">
@@ -3006,7 +4368,161 @@ main {
     </button>
   </div>
   <button class="llas-item" onclick="llMarkAllUnplayed()">Mark all as unplayed</button>
+  <button class="llas-item" onclick="llRemoveAllPlayed()">Remove all played</button>
   <button class="llas-item" onclick="llClearAll()">Clear all</button>
+</div>
+
+<!-- Device modal -->
+<div class="device-screen" id="deviceScreen">
+  <div class="device-header">
+    <button class="device-close" onclick="closeDeviceModal()" aria-label="닫기">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+    <h1 class="device-title">Device</h1>
+    <button class="device-gear" aria-label="설정">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="3"/></svg>
+    </button>
+  </div>
+  <div class="device-info">
+    <svg width="20" height="22" viewBox="0 0 24 28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="2" width="16" height="24" rx="2.5"/>
+      <line x1="11" y1="22" x2="13" y2="22"/>
+    </svg>
+    <span class="device-info-name">스피커</span>
+  </div>
+  <div class="device-badge">
+    <span class="device-badge-dot"></span>
+    <span id="deviceSampleRate">48 kHz</span>
+  </div>
+</div>
+
+<!-- Signal Path Sheet (Roon ARC-style) -->
+<div class="signal-path-sheet" id="signalPathSheet">
+  <div class="sp-header">
+    <button class="sp-close" onclick="closeSignalPath()" aria-label="닫기">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+    <div class="sp-title-wrap">
+      <h2 class="sp-title" id="spTitle">Lossy</h2>
+      <p class="sp-subtitle">Click on any stage of the path to learn more</p>
+    </div>
+  </div>
+  <div class="sp-stages" id="spStages"></div>
+</div>
+
+<!-- Stage info mini-modal -->
+<div class="stage-info-backdrop" id="stageInfoBackdrop" onclick="closeStageInfo()"></div>
+<div class="stage-info-modal" id="stageInfoModal">
+  <div class="sim-title" id="simTitle">Title</div>
+  <div class="sim-body" id="simBody">Body</div>
+  <button class="sim-close-btn" onclick="closeStageInfo()">Got it</button>
+</div>
+
+<!-- Lyrics edit modal -->
+<!-- Output device picker sheet (slides up from bottom of full player) -->
+<div class="output-sheet-backdrop" id="outputSheetBackdrop" onclick="closeOutputSheet()"></div>
+<div class="output-sheet" id="outputSheet">
+  <div class="os-handle"></div>
+  <div class="os-header">
+    <div class="os-header-art">
+      <img id="osHeaderArt" alt="">
+      <span class="os-header-art-fb">♫</span>
+    </div>
+    <div class="os-header-info">
+      <div class="os-header-title" id="osHeaderTitle">—</div>
+      <div class="os-header-artist" id="osHeaderArtist"></div>
+    </div>
+    <span class="os-header-viz" aria-label="visualizer"><i></i><i></i><i></i><i></i><i></i></span>
+  </div>
+  <div class="os-list">
+    <div class="os-row os-row-iphone" data-device="iphone" onclick="osSelectDevice('iphone')">
+      <div class="os-row-layer os-row-dark">
+        <svg class="os-row-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="6" y="2" width="12" height="20" rx="2"/>
+          <line x1="11" y1="18" x2="13" y2="18"/>
+        </svg>
+        <span class="os-row-label">iPhone 스피커</span>
+        <svg class="os-row-vol-icon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4.03v8.05A4.5 4.5 0 0 0 16.5 12zM14 3.23v2.06A7 7 0 0 1 14 18.71v2.06A9 9 0 0 0 14 3.23z"/>
+        </svg>
+        <svg class="os-row-check" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+      <div class="os-vol-fill" id="osVolFill"></div>
+      <div class="os-row-layer os-row-light">
+        <svg class="os-row-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="6" y="2" width="12" height="20" rx="2"/>
+          <line x1="11" y1="18" x2="13" y2="18"/>
+        </svg>
+        <span class="os-row-label">iPhone 스피커</span>
+        <svg class="os-row-vol-icon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4.03v8.05A4.5 4.5 0 0 0 16.5 12zM14 3.23v2.06A7 7 0 0 1 14 18.71v2.06A9 9 0 0 0 14 3.23z"/>
+        </svg>
+        <svg class="os-row-check" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+    </div>
+    <div class="os-row" data-device="imac" onclick="osSelectDevice('imac')">
+      <div class="os-row-layer os-row-dark">
+        <svg class="os-row-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2.5" y="3.5" width="19" height="13" rx="1.5"/>
+          <line x1="8" y1="20" x2="16" y2="20"/>
+          <line x1="10" y1="17" x2="14" y2="17"/>
+          <line x1="12" y1="17" x2="12" y2="20"/>
+        </svg>
+        <span class="os-row-label">copy_imac의 iMac</span>
+        <svg class="os-row-check" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+    </div>
+    <div class="os-row" data-device="lg-tv" onclick="osSelectDevice('lg-tv')">
+      <div class="os-row-layer os-row-dark">
+        <svg class="os-row-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2.5" y="4" width="19" height="13" rx="1.5"/>
+          <line x1="8" y1="20" x2="16" y2="20"/>
+          <line x1="12" y1="17" x2="12" y2="20"/>
+        </svg>
+        <span class="os-row-label">[LG] webOS TV OLED 55B4KNA</span>
+        <svg class="os-row-check" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="lyrics-modal-backdrop" id="lyricsModalBackdrop" onclick="closeLyricsModal()"></div>
+<div class="lyrics-modal" id="lyricsModal">
+  <div class="lm-header">
+    <div class="lm-title">Edit lyrics</div>
+    <div class="lm-songinfo" id="lmSongInfo"></div>
+  </div>
+  <textarea class="lm-textarea" id="lmTextarea" placeholder="Paste lyrics here…&#10;&#10;Plain text or LRC format like [00:12.50] line"></textarea>
+  <div class="lm-tip">Plain text or LRC <code>[mm:ss.xx]</code> — line breaks preserved.</div>
+  <div class="lm-sync-row">
+    <div class="lm-sync-labels">
+      <span class="lm-sync-label">Sync offset</span>
+      <span class="lm-sync-auto" id="fpLyricsAutoOffset" style="display:none"></span>
+    </div>
+    <div class="lm-sync-ctrls">
+      <button class="lm-sync-btn" onclick="adjustLyricsOffset(-0.5)" aria-label="가사 빠르게">−</button>
+      <span class="lm-sync-val" id="fpLyricsOffsetLabel">0.0s</span>
+      <button class="lm-sync-btn" onclick="adjustLyricsOffset(0.5)" aria-label="가사 느리게">+</button>
+      <button class="lm-sync-reset" onclick="resetLyricsOffset()">Reset</button>
+    </div>
+  </div>
+  <div class="lm-buttons">
+    <button class="lm-btn lm-btn-clear" onclick="lyricsModalClear()">Clear</button>
+    <button class="lm-btn lm-btn-cancel" onclick="closeLyricsModal()">Cancel</button>
+    <button class="lm-btn lm-btn-save" onclick="lyricsModalSave()">Save</button>
+  </div>
 </div>
 
 <!-- Toast notification -->
@@ -3053,6 +4569,27 @@ main {
       </svg>
     </button>
   </div>
+  <div class="ll-actions-row" id="llActionsRow">
+    <button class="ll-action-btn ll-action-primary" onclick="llPlayAll()" aria-label="모두 재생">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+      <span>Play</span>
+    </button>
+    <button class="ll-action-btn" onclick="llShufflePlay()" aria-label="셔플 재생">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="16 3 21 3 21 8"/>
+        <line x1="4" y1="20" x2="21" y2="3"/>
+        <polyline points="21 16 21 21 16 21"/>
+        <line x1="15" y1="15" x2="21" y2="21"/>
+        <line x1="4" y1="4" x2="9" y2="9"/>
+      </svg>
+      <span>Shuffle</span>
+    </button>
+  </div>
+  <div class="ll-filter-row" id="llFilterRow">
+    <button class="ll-filter-tab active" data-filter="all"      onclick="llSetFilter('all')">All <span class="ll-filter-count" id="llFilterCountAll">0</span></button>
+    <button class="ll-filter-tab"        data-filter="unplayed" onclick="llSetFilter('unplayed')">Unplayed <span class="ll-filter-count" id="llFilterCountUnplayed">0</span></button>
+    <button class="ll-filter-tab"        data-filter="played"   onclick="llSetFilter('played')">Played <span class="ll-filter-count" id="llFilterCountPlayed">0</span></button>
+  </div>
   <div class="ll-list-wrap" id="llList"></div>
 </div>
 
@@ -3073,8 +4610,17 @@ main {
   <div class="ra-list" id="raList"></div>
 </div>
 
-<audio id="audioEl"></audio>
+<audio id="audioEl" playsinline webkit-playsinline x-webkit-airplay="allow" preload="metadata"></audio>
 <script>
+// Register a minimal Service Worker so iOS treats this as a fully installed PWA.
+// Without this, tapping the lockscreen Now Playing widget can open a new
+// Safari tab pointing at the audio URL, which steals the audio session and
+// stops playback.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
 // ── STATE ──
 const audio = document.getElementById('audioEl');
 let playlist = [], currentFolder = null, currentQueue = [], originalQueue = [], currentIdx = -1;
@@ -3234,30 +4780,164 @@ function selectFolder(idx) {
   renderSongList(playlist[idx]);
   closeDrawer();
   if (window.innerWidth < 768) { switchTab('home', false); showSongList(); }
+  else { showSongList(); }
 }
 
 function renderSongList(folder) {
-  const backBtn = window.innerWidth < 768
-    ? `<button class="btn-back-home" onclick="showHomeFeed()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
-        Home
-      </button>` : '';
+  // The "< Home" button is removed; tapping anywhere outside or using the
+  // tab bar returns home. The header area grows into the freed-up space and
+  // becomes a hero block with a blurred background image of the artist.
   document.getElementById('mainContent').innerHTML = `
-    ${backBtn}
-    <div class="list-header">
-      <div class="list-header-row">
-        <span class="lh-icon">♪</span>
-        <span class="lh-name">${folder.folder}</span>
-        <span class="lh-count">${folder.songs.length}곡</span>
-      </div>
-      <button class="btn-play-all" onclick="playAll(${currentFolder})">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
-        전체 재생
+    <div class="list-hero" id="listHero">
+      <div class="list-hero-bg" id="listHeroBg"></div>
+      <div class="list-hero-overlay"></div>
+      <button class="list-hero-back" onclick="showHomeFeed()" aria-label="홈으로">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
       </button>
+      <div class="list-hero-content">
+        <div class="list-header-row">
+          <span class="lh-icon">♪</span>
+          <span class="lh-name">${esc(folder.folder)}</span>
+          <span class="lh-count">${folder.songs.length}곡</span>
+        </div>
+        <button class="btn-play-all" onclick="playAll(${currentFolder})">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+          전체 재생
+        </button>
+      </div>
     </div>
     <div class="song-list">
       ${folder.songs.map((s, i) => songRowHTML(s, i)).join('')}
     </div>`;
+
+  // Resolve a background image for the hero. Order of preference:
+  //   1) localStorage cache (instant, no flicker)
+  //   2) local artist-thumbs/<folder>.jpg if user provided one
+  //   3) TheAudioDB lookup (free, no API key)
+  //   4) First song's embedded album art as a graceful fallback
+  applyHeroBackground(folder);
+}
+
+// ── Artist hero background loader ─────────────────────────────────────
+// We collect ALL candidate images per artist (TheAudioDB returns up to 6:
+// strArtistThumb + strArtistFanart{1..4} + strArtistLogo). On every render
+// we pick a different one at random so the hero shows variety across app
+// launches (and even across navigations within one session).
+const artistImgMem = new Map(); // folderName → string[] | null
+
+async function loadArtistImages(folderName) {
+  if (artistImgMem.has(folderName)) return artistImgMem.get(folderName);
+  // localStorage cache (array of URLs, or sentinel 'none')
+  try {
+    const cached = localStorage.getItem('fg_artist_imgs_' + folderName);
+    if (cached) {
+      const v = cached === 'none' ? null : JSON.parse(cached);
+      artistImgMem.set(folderName, v);
+      return v;
+    }
+  } catch(_) {}
+
+  // User-supplied local file always wins — best quality control
+  try {
+    const localPath = 'artist-thumbs/' + encodeURIComponent(folderName) + '.jpg';
+    const head = await fetch(localPath, { method: 'HEAD' });
+    if (head.ok) {
+      const arr = [localPath];
+      artistImgMem.set(folderName, arr);
+      try { localStorage.setItem('fg_artist_imgs_' + folderName, JSON.stringify(arr)); } catch(_) {}
+      return arr;
+    }
+  } catch(_) {}
+
+  // TheAudioDB query. Strip bracketed prefixes/suffixes so queries like
+  // "[B] Beatles" or "시와 (소요)" become "Beatles" / "시와".
+  const q = folderName.replace(/\[[^\]]*\]/g, '').replace(/\([^)]*\)/g, '').trim();
+  if (q && q !== 'Jazz' && q !== '기타') {
+    try {
+      const url = `https://www.theaudiodb.com/api/v1/json/2/search.php?s=${encodeURIComponent(q)}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        const a = data && data.artists && data.artists[0];
+        if (a) {
+          // Collect every non-empty image field; preferred order favours
+          // photos that include the artist's face.
+          const candidates = [
+            a.strArtistThumb,
+            a.strArtistFanart,
+            a.strArtistFanart2,
+            a.strArtistFanart3,
+            a.strArtistFanart4,
+            a.strArtistLogo,
+          ].filter(u => typeof u === 'string' && u.length > 8);
+          if (candidates.length) {
+            artistImgMem.set(folderName, candidates);
+            try { localStorage.setItem('fg_artist_imgs_' + folderName, JSON.stringify(candidates)); } catch(_) {}
+            return candidates;
+          }
+        }
+      }
+    } catch(_) {}
+  }
+
+  artistImgMem.set(folderName, null);
+  try { localStorage.setItem('fg_artist_imgs_' + folderName, 'none'); } catch(_) {}
+  return null;
+}
+
+// Pick a candidate image. Uses sessionStorage to remember the LAST one used
+// per artist this session, so two openings in a row don't repeat.
+function pickArtistImage(folderName, urls) {
+  if (!urls || !urls.length) return null;
+  if (urls.length === 1) return urls[0];
+  const key = 'fg_artist_last_' + folderName;
+  let last = '';
+  try { last = sessionStorage.getItem(key) || ''; } catch(_) {}
+  // Filter out the last-used one if possible
+  const pool = urls.filter(u => u !== last);
+  const choice = (pool.length ? pool : urls)[Math.floor(Math.random() * (pool.length ? pool.length : urls.length))];
+  try { sessionStorage.setItem(key, choice); } catch(_) {}
+  return choice;
+}
+
+function setHeroBgUrl(url) {
+  const bg = document.getElementById('listHeroBg');
+  if (!bg) return;
+  const im = new Image();
+  im.onload = () => {
+    bg.style.backgroundImage = `url(${JSON.stringify(url).slice(1, -1)})`;
+    bg.classList.add('loaded');
+  };
+  im.src = url;
+}
+
+async function applyHeroBackground(folder) {
+  // 1) Immediate album-art fallback so the hero never looks empty
+  const firstSong = folder.songs[0];
+  if (firstSong) {
+    const tmp = document.createElement('img');
+    tmp.style.display = 'none';
+    document.body.appendChild(tmp);
+    tmp.addEventListener('load', () => {
+      const bg = document.getElementById('listHeroBg');
+      if (bg && !bg.classList.contains('artist-loaded')) {
+        setHeroBgUrl(tmp.src);
+      }
+      tmp.remove();
+    }, { once: true });
+    loadCardArt(firstSong, tmp);
+  }
+  // 2) Async artist image lookup — pick a random one each render
+  try {
+    const urls = await loadArtistImages(folder.folder);
+    const url  = pickArtistImage(folder.folder, urls);
+    if (!url) return;
+    const bg = document.getElementById('listHeroBg');
+    if (bg) bg.classList.add('artist-loaded');
+    setHeroBgUrl(url);
+  } catch(_) {}
 }
 
 function songRowHTML(filename, idx) {
@@ -3322,6 +5002,7 @@ function updateNowPlaying(fn) {
   updateMediaSessionMetadata(title, folder, artCache.has(fn) ? artCache.get(fn) : null);
   loadAlbumArt('music/' + encodeURIComponent(fn));
   updateFpHeartIcon();
+  updateQualityBadge();
   setTimeout(startMpMarquee, 100);
   if (typeof fullPlayer !== 'undefined' && fullPlayer.classList.contains('open')) {
     setTimeout(startTitleMarquee, 100);
@@ -3438,18 +5119,30 @@ function applyPlayerTheme(hsl, artSrc) {
 
   // ② 진행바 색 + theme-color + 풀플레이어/body 베이스 배경: 앨범아트 색조 반영
   currentHsl = hsl;
+  const badge = document.getElementById('fpQualityBadge');
   if (hsl) {
     const { h, s } = hsl;
     const barS = Math.min(s * 0.85, 68);
     bar.style.background = `hsl(${h}, ${barS}%, 35%)`;
     setThemeColor(hsl);
     fp.style.background = fpTintFromHsl(hsl);
-    // body·html도 동일 톤으로: iOS PWA에서 fixed가 safe area를 못 덮을 때의 흰 띠 방지
     if (fullPlayer.classList.contains('open')) applyBodyTint(hsl);
+    // Tint the quality badge to match the album-art theme (Roon-style)
+    if (badge) {
+      const tintS = Math.min(s * 0.6, 45);
+      badge.style.background = `hsla(${h}, ${tintS}%, 35%, 0.22)`;
+      badge.style.borderColor = `hsla(${h}, ${tintS}%, 50%, 0.28)`;
+      badge.style.color = `hsl(${h}, ${Math.min(s * 0.7, 50)}%, 22%)`;
+    }
   } else {
     bar.style.background = '';
     setThemeColor(null);
     fp.style.background = '';
+    if (badge) {
+      badge.style.background = '';
+      badge.style.borderColor = '';
+      badge.style.color = '';
+    }
   }
 }
 
@@ -3575,6 +5268,219 @@ async function fetchCoverArt(fn) {
   return extractID3Cover(new Uint8Array(await tRes.arrayBuffer()));
 }
 
+// ── Audio metadata (for quality badge + signal path) ──
+// MP3 bitrate index (MPEG-1 Layer III)
+const MP3_BITRATES_L3 = [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 0];
+// MP3 sample rate (MPEG-1)
+const MP3_SAMPLE_RATES = [44100, 48000, 32000, 0];
+
+const trackMetaCache = {}; // fn → { format, codec, bitrate, sampleRate, channels }
+
+function parseMp3FrameHeader(data, offset) {
+  // Look for sync bytes 0xFFFx
+  for (let i = offset; i < data.length - 4; i++) {
+    if (data[i] === 0xFF && (data[i+1] & 0xE0) === 0xE0) {
+      const b1 = data[i+1], b2 = data[i+2], b3 = data[i+3];
+      const versionId = (b1 >> 3) & 0x03;
+      const layer = (b1 >> 1) & 0x03;
+      const bitrateIdx = (b2 >> 4) & 0x0F;
+      const sampleRateIdx = (b2 >> 2) & 0x03;
+      const channelMode = (b3 >> 6) & 0x03;
+      // Only handle MPEG-1 Layer III
+      if (versionId !== 3 || layer !== 1) continue;
+      const bitrate = MP3_BITRATES_L3[bitrateIdx];
+      const sampleRate = MP3_SAMPLE_RATES[sampleRateIdx];
+      if (!bitrate || !sampleRate) continue;
+      return {
+        bitrate,
+        sampleRate,
+        channels: channelMode === 3 ? 1 : 2 // 3 = mono
+      };
+    }
+  }
+  return null;
+}
+
+async function fetchTrackMetadata(fn) {
+  if (trackMetaCache[fn]) return trackMetaCache[fn];
+  const url = 'music/' + encodeURIComponent(fn);
+  const ext = (fn.match(/\.([^.]+)$/) || [, ''])[1].toLowerCase();
+  try {
+    if (ext === 'mp3') {
+      // Get first 10 bytes to find ID3 tag size, then fetch past the tag to read MP3 frame
+      const hRes = await fetch(url, { headers: { Range: 'bytes=0-9' } });
+      if (!hRes.ok && hRes.status !== 206) return null;
+      const header = new Uint8Array(await hRes.arrayBuffer());
+      let frameStart = 0;
+      if (header.length >= 10 && header[0] === 0x49 && header[1] === 0x44 && header[2] === 0x33) {
+        const tagSize = ((header[6]&0x7f)<<21)|((header[7]&0x7f)<<14)|((header[8]&0x7f)<<7)|(header[9]&0x7f);
+        frameStart = 10 + tagSize;
+      }
+      // Fetch a 2KB window right after ID3 to find the first MP3 frame
+      const r2 = await fetch(url, { headers: { Range: `bytes=${frameStart}-${frameStart + 2048}` } });
+      if (!r2.ok && r2.status !== 206) return null;
+      const data = new Uint8Array(await r2.arrayBuffer());
+      const frame = parseMp3FrameHeader(data, 0);
+      if (!frame) return null;
+      const meta = {
+        format: 'MP3', codec: 'MP3',
+        bitrate: frame.bitrate,
+        sampleRate: frame.sampleRate,
+        channels: frame.channels
+      };
+      trackMetaCache[fn] = meta;
+      return meta;
+    }
+    if (ext === 'm4a') {
+      // Default M4A is AAC. Detection of ALAC would need atom parsing.
+      const meta = { format: 'M4A', codec: 'AAC', bitrate: null, sampleRate: 44100, channels: 2 };
+      trackMetaCache[fn] = meta;
+      return meta;
+    }
+    if (ext === 'flac') {
+      const meta = { format: 'FLAC', codec: 'FLAC', bitrate: null, sampleRate: 44100, channels: 2 };
+      trackMetaCache[fn] = meta;
+      return meta;
+    }
+    const meta = { format: ext.toUpperCase(), codec: ext.toUpperCase(), bitrate: null, sampleRate: 44100, channels: 2 };
+    trackMetaCache[fn] = meta;
+    return meta;
+  } catch(e) { return null; }
+}
+
+function getQualityLabel(meta) {
+  if (!meta) return { label: 'Standard', dotClass: 'lossy' };
+  if (meta.codec === 'FLAC' || meta.codec === 'ALAC') return { label: 'Lossless', dotClass: 'lossless' };
+  if (meta.format === 'MP3' && meta.bitrate >= 256) return { label: 'Lossy HQ', dotClass: 'lossy-hq' };
+  if (meta.format === 'MP3') return { label: 'Lossy', dotClass: 'lossy' };
+  if (meta.codec === 'AAC') return { label: 'Lossy', dotClass: 'lossy' };
+  return { label: 'Standard', dotClass: 'lossy' };
+}
+
+async function updateQualityBadge() {
+  const fn = currentQueue[currentIdx];
+  const badge = document.getElementById('fpQualityBadge');
+  const dot = document.getElementById('fpQualityDot');
+  const text = document.getElementById('fpQualityText');
+  if (!badge) return;
+  if (!fn) { badge.style.display = 'none'; return; }
+  badge.style.display = '';
+  const meta = await fetchTrackMetadata(fn);
+  const q = getQualityLabel(meta);
+  dot.className = 'fp-quality-dot ' + q.dotClass;
+  text.textContent = q.label;
+  // Paused vs playing visual
+  badge.classList.toggle('paused', audio.paused);
+}
+
+// ── Signal Path Sheet ──
+const STAGE_INFO = {
+  source: {
+    title: 'Source',
+    body: 'The original audio file as stored on the server. Format and bitrate determine the maximum possible quality you will hear.'
+  },
+  streaming: {
+    title: 'Streaming',
+    body: 'The file is delivered over HTTPS from the Netlify CDN. Range requests stream just enough audio data on demand.'
+  },
+  decoder: {
+    title: 'Browser Decoder',
+    body: 'Your device\'s built-in audio decoder converts the compressed file into PCM audio. For MP3/AAC this is lossy decoding; for FLAC/ALAC it is bit-perfect.'
+  },
+  processing: {
+    title: 'Processing',
+    body: 'When you adjust the stereo balance, the Web Audio API applies a real-time pan. With balance centered, no processing is applied — the audio passes through untouched.'
+  },
+  output: {
+    title: 'Output',
+    body: 'Your system audio output — typically the iPhone speaker, connected headphones, or AirPlay device. The OS handles the final hardware mixing.'
+  }
+};
+
+async function buildSignalPath() {
+  const fn = currentQueue[currentIdx];
+  if (!fn) return [];
+  const meta = await fetchTrackMetadata(fn);
+  const stages = [];
+  // 1. Source
+  const sourceParts = [];
+  if (meta) {
+    sourceParts.push(meta.format);
+    if (meta.bitrate) sourceParts.push(meta.bitrate + ' kbps');
+    if (meta.sampleRate) sourceParts.push((meta.sampleRate / 1000).toFixed(1) + ' kHz');
+    if (meta.channels) sourceParts.push(meta.channels + ' ch');
+  } else {
+    sourceParts.push((fn.match(/\.([^.]+)$/) || [, ''])[1].toUpperCase() || 'Audio file');
+  }
+  stages.push({ id: 'source', title: 'Source', detail: sourceParts.join(' · ') });
+  // 2. Streaming
+  stages.push({ id: 'streaming', title: 'Streaming', detail: 'HTTPS via Netlify CDN' });
+  // 3. Decoder
+  stages.push({ id: 'decoder', title: 'Browser decoder', detail: 'Native HTMLAudioElement' });
+  // 4. Processing (only if balance active)
+  if (typeof balancePanner !== 'undefined' && balancePanner && balancePanner.pan && Math.abs(balancePanner.pan.value) > 0.01) {
+    const v = balancePanner.pan.value;
+    const label = v < 0 ? 'L' + Math.round(Math.abs(v) * 100) : 'R' + Math.round(v * 100);
+    stages.push({ id: 'processing', title: 'Processing', detail: 'Stereo balance: ' + label });
+  }
+  // 5. Output
+  stages.push({ id: 'output', title: 'Output', detail: 'System audio output' });
+  return stages;
+}
+
+async function openSignalPath() {
+  const fn = currentQueue[currentIdx];
+  if (!fn) return;
+  const meta = await fetchTrackMetadata(fn);
+  const q = getQualityLabel(meta);
+  document.getElementById('spTitle').textContent = q.label;
+  const stages = await buildSignalPath();
+  const container = document.getElementById('spStages');
+  container.innerHTML = stages.map((s, i) => {
+    const isFirst = i === 0;
+    const isLast = i === stages.length - 1;
+    let icon;
+    if (s.id === 'source') {
+      icon = `<div class="sp-stage-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>`;
+    } else if (s.id === 'output') {
+      icon = `<div class="sp-stage-icon"><svg width="16" height="20" viewBox="0 0 24 28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="24" rx="2.5"/><line x1="11" y1="22" x2="13" y2="22"/></svg></div>`;
+    } else {
+      icon = `<div class="sp-stage-dot"></div>`;
+    }
+    return `<div class="sp-stage" onclick="openStageInfo('${s.id}')">
+      <div class="sp-stage-icon-col">
+        ${!isFirst || !isLast ? `<div class="sp-stage-line"></div>` : ''}
+        ${icon}
+      </div>
+      <div class="sp-stage-info">
+        <div class="sp-stage-title-row">
+          <span class="sp-stage-title">${esc(s.title)}</span>
+          <svg class="sp-stage-info-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0l2.4 9.6L24 12l-9.6 2.4L12 24l-2.4-9.6L0 12l9.6-2.4z"/></svg>
+        </div>
+        <div class="sp-stage-detail">${esc(s.detail)}</div>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('sheetBackdrop').classList.add('open');
+  document.getElementById('signalPathSheet').classList.add('open');
+}
+function closeSignalPath() {
+  document.getElementById('sheetBackdrop').classList.remove('open');
+  document.getElementById('signalPathSheet').classList.remove('open');
+}
+function openStageInfo(stageId) {
+  const info = STAGE_INFO[stageId];
+  if (!info) return;
+  document.getElementById('simTitle').textContent = info.title;
+  document.getElementById('simBody').textContent = info.body;
+  document.getElementById('stageInfoBackdrop').classList.add('open');
+  document.getElementById('stageInfoModal').classList.add('open');
+}
+function closeStageInfo() {
+  document.getElementById('stageInfoBackdrop').classList.remove('open');
+  document.getElementById('stageInfoModal').classList.remove('open');
+}
+
 function highlightPlaying(fn) {
   document.querySelectorAll('.song-row').forEach(r => r.classList.toggle('playing', r.dataset.file === fn));
 }
@@ -3614,7 +5520,7 @@ function shuffled(arr, keepIdx) {
 function toggleShuffle() {
   shuffle = !shuffle;
   [document.getElementById('fpShuffle'), document.getElementById('dShuffle')]
-    .forEach(b => b.classList.toggle('active', shuffle));
+    .forEach(b => b && b.classList.toggle('active', shuffle));
   if (shuffle && currentQueue.length) {
     const cur = currentQueue[currentIdx];
     currentQueue = shuffled(originalQueue, originalQueue.indexOf(cur));
@@ -3624,13 +5530,18 @@ function toggleShuffle() {
     currentQueue = [...originalQueue];
     currentIdx = originalQueue.indexOf(cur);
   }
+  saveState();
 }
 
 function toggleRepeat() {
   const modes = ['none','all','one'];
   repeat = modes[(modes.indexOf(repeat) + 1) % modes.length];
-  [document.getElementById('fpRepeat'), document.getElementById('dRepeat')]
-    .forEach(b => b.classList.toggle('active', repeat !== 'none'));
+  [document.getElementById('fpRepeat'), document.getElementById('dRepeat')].forEach(b => {
+    if (!b) return;
+    b.classList.toggle('active', repeat !== 'none');
+    b.classList.toggle('repeat-one', repeat === 'one');
+  });
+  saveState();
 }
 
 audio.onended = () => {
@@ -3656,7 +5567,815 @@ audio.ontimeupdate = () => {
   document.getElementById('fpTimeTot').textContent = tot;
   document.getElementById('dTimeCur').textContent  = cur;
   document.getElementById('dTimeTot').textContent  = tot;
+  // (Lyrics sync runs on its own RAF loop — see startLyricsClock)
 };
+
+// ─────────────────────────────────────────────────────────────
+// ── Lyrics: local .lrc → LRCLib API → empty fallback ──
+// ─────────────────────────────────────────────────────────────
+let lyricsLines = [];     // [{ t: seconds, text: string }]
+let lyricsCurrentIdx = -1;
+let lyricsLastFn = null;
+let lyricsUserOffset = 0; // user-adjustable, in seconds (positive = delay lyrics)
+let lyricsAutoOffset = 0; // automatic, derived from leading-silence detection (s)
+
+// Decode the audio file and locate the first non-silent sample. The result
+// represents how much "dead air" the user's file has before any real audio —
+// the most common reason LRC timestamps run ahead of actual playback on iOS
+// (MP3 encoder padding, mastering padding, gapless-tag mishandling, etc).
+// Cached per filename in localStorage so we pay the cost only once per song.
+async function detectLeadingSilence(songUrl, fn) {
+  const key = 'fg_silence_' + fn;
+  try {
+    const v = localStorage.getItem(key);
+    if (v !== null) return parseFloat(v);
+  } catch(_) {}
+  try {
+    const res = await fetch(songUrl);
+    if (!res.ok) throw new Error('http ' + res.status);
+    const buf = await res.arrayBuffer();
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) throw new Error('no AudioContext');
+    const ctx = new AC();
+    const audioBuf = await new Promise((resolve, reject) =>
+      ctx.decodeAudioData(buf, resolve, reject)
+    );
+    const sr = audioBuf.sampleRate;
+    const ch0 = audioBuf.getChannelData(0);
+    const ch1 = audioBuf.numberOfChannels > 1 ? audioBuf.getChannelData(1) : null;
+    // -48dBFS — well below typical noise floor but above true silence
+    const TH = 0.004;
+    // Require a short sustained-energy window so a single sample blip doesn't fool us
+    const WIN = Math.max(8, Math.floor(sr * 0.002)); // 2ms window
+    let count = 0, firstIdx = ch0.length;
+    for (let i = 0; i < ch0.length; i++) {
+      const v = ch1 ? Math.max(Math.abs(ch0[i]), Math.abs(ch1[i])) : Math.abs(ch0[i]);
+      if (v > TH) {
+        count++;
+        if (count >= WIN) { firstIdx = i - WIN + 1; break; }
+      } else {
+        count = 0;
+      }
+    }
+    const silence = Math.max(0, firstIdx / sr);
+    try { ctx.close(); } catch(_) {}
+    try { localStorage.setItem(key, silence.toFixed(4)); } catch(_) {}
+    return silence;
+  } catch (e) {
+    try { localStorage.setItem(key, '0'); } catch(_) {}
+    return 0;
+  }
+}
+
+// Decide how much auto offset to apply given the detected silence + lyrics.
+// Two cases we correct:
+//   (a) LRC's first synced line lands inside the detected silence — the LRC
+//       was timed against a no-silence reference, shift it forward to where
+//       audio actually begins.
+//   (b) Detected silence looks like typical encoder/mastering padding (under
+//       0.5s) — apply it as a small global offset.
+// Otherwise (long silence + LRC starts after vocals begin), assume the LRC
+// already accounts for the intro and don't touch it.
+function computeAutoLyricsOffset(silenceSec, firstSyncedT) {
+  if (!isFinite(silenceSec) || silenceSec < 0.01) return 0;
+  // (a) LRC starts during the silence — shift to align with vocal entry.
+  //     Use a 0.5s grace window so legitimate small offsets aren't mis-detected.
+  if (firstSyncedT >= 0 && firstSyncedT < silenceSec - 0.5) {
+    return Math.min(10, silenceSec - firstSyncedT);
+  }
+  // (b) Small padding — apply as a safe global encoder/decoder compensation.
+  if (silenceSec <= 0.5) return silenceSec;
+  // Long silence + LRC already past it — assume LRC is calibrated correctly.
+  return 0;
+}
+window._lyricsActive = false;
+
+// Enhanced LRC parser. Supports:
+//   [mm:ss.xx] line text         — line-level timing
+//   [mm:ss.xx]<mm:ss.xx>word ... — A2 extension (per-word timing)
+//   [offset:N]                   — global offset in ms (positive ⇒ lyrics earlier)
+// Returns an array of { t, end, text, words } objects sorted by t.
+//   words: null OR [{ t, end, text }]
+function parseLRC(text) {
+  if (!text) return [];
+  const out = [];
+  let lrcOffset = 0;
+  const stampRe = /^\[(\d+):(\d+)(?:[.:](\d+))?\]/;
+  const wordRe  = /<(\d+):(\d+)(?:[.:](\d+))?>/g;
+  text.split(/\r?\n/).forEach(raw => {
+    const om = raw.match(/^\s*\[offset:\s*([+-]?\d+)\s*\]/i);
+    if (om) { lrcOffset = parseInt(om[1]) / 1000; return; }
+
+    const lineStamps = [];
+    let rest = raw;
+    let m;
+    while ((m = rest.match(stampRe))) {
+      const t = parseInt(m[1]) * 60 + parseInt(m[2]) +
+                (m[3] ? parseInt(m[3]) / Math.pow(10, m[3].length) : 0);
+      lineStamps.push(t);
+      rest = rest.slice(m[0].length).replace(/^\s+/, '');
+    }
+    if (!lineStamps.length) {
+      const txt = raw.trim();
+      if (txt && !/^\[/.test(txt)) out.push({ t: -1, end: -1, text: txt, words: null });
+      return;
+    }
+    // Parse <mm:ss.xx>word stamps inside the rest
+    const wordStamps = [];
+    let wm;
+    wordRe.lastIndex = 0;
+    while ((wm = wordRe.exec(rest))) {
+      const t = parseInt(wm[1]) * 60 + parseInt(wm[2]) +
+                (wm[3] ? parseInt(wm[3]) / Math.pow(10, wm[3].length) : 0);
+      wordStamps.push({ idx: wm.index, len: wm[0].length, t });
+    }
+    let words = null;
+    if (wordStamps.length) {
+      words = [];
+      const lineStart = lineStamps[0];
+      // First word starts at the line timestamp; chunks are between word stamps
+      let prevT = lineStart;
+      let pos = 0;
+      for (const ws of wordStamps) {
+        const seg = rest.slice(pos, ws.idx);
+        if (seg) words.push({ t: prevT, end: ws.t, text: seg });
+        prevT = ws.t;
+        pos = ws.idx + ws.len;
+      }
+      const tail = rest.slice(pos);
+      if (tail) words.push({ t: prevT, end: -1, text: tail }); // end filled later
+    }
+    // Strip word stamps from displayable text
+    const cleanText = rest.replace(wordRe, '').trim();
+    lineStamps.forEach(t => {
+      // For multi-stamp lines, shift word times by the per-stamp delta
+      const delta = t - lineStamps[0];
+      const lineWords = words ? words.map(w => ({
+        t: w.t + delta,
+        end: w.end < 0 ? -1 : w.end + delta,
+        text: w.text
+      })) : null;
+      out.push({ t, end: -1, text: cleanText, words: lineWords });
+    });
+  });
+
+  // Apply LRC offset (positive ⇒ subtract from timestamps so they happen earlier)
+  out.forEach(ln => {
+    if (ln.t >= 0) ln.t = Math.max(0, ln.t - lrcOffset);
+    if (ln.words) ln.words.forEach(w => {
+      w.t   = Math.max(0, w.t   - lrcOffset);
+      if (w.end >= 0) w.end = Math.max(0, w.end - lrcOffset);
+    });
+  });
+  out.sort((a, b) => a.t - b.t);
+
+  // Derive line end times (= next line's start) and fill missing word ends
+  for (let i = 0; i < out.length; i++) {
+    const next = out.slice(i + 1).find(x => x.t >= 0);
+    out[i].end = next ? next.t : out[i].t + 6; // 6s default tail
+    if (out[i].words) {
+      for (let j = 0; j < out[i].words.length; j++) {
+        if (out[i].words[j].end < 0) {
+          out[i].words[j].end = out[i].words[j + 1]?.t ?? out[i].end;
+        }
+      }
+    }
+  }
+  return out;
+}
+
+// Extract artist + title from filename like "Aimyon - 곡명.mp3"
+function lyricsParseFilename(fn, folderName) {
+  const base = fn.replace(/\.(mp3|m4a|wav|ogg|flac|wmv)$/i, '').normalize('NFC');
+  const dashIdx = base.indexOf(' - ');
+  if (dashIdx > 0) {
+    return {
+      artist: base.substring(0, dashIdx).trim(),
+      title: base.substring(dashIdx + 3).trim()
+    };
+  }
+  return { artist: (folderName || '').normalize('NFC'), title: base };
+}
+
+function loadCachedLyrics(fn) {
+  try { const v = localStorage.getItem('fg_lyrics_' + fn); if (v) return JSON.parse(v); } catch(_) {}
+  return null;
+}
+function saveCachedLyrics(fn, payload) {
+  try { localStorage.setItem('fg_lyrics_' + fn, JSON.stringify(payload)); } catch(_) {}
+}
+
+// Normalize title/artist strings for fuzzy comparison.
+function lyricsNorm(s) {
+  if (!s) return '';
+  return s.normalize('NFC').toLowerCase()
+    .replace(/\s*[\(\[（［][^)\]）］]*[\)\]）］]\s*/g, ' ')   // strip parentheticals
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')                       // drop punctuation
+    .replace(/\s+/g, ' ').trim();
+}
+// Returns 0–1 token-overlap similarity (Jaccard) with substring/equality boosts.
+function lyricsSimilarity(a, b) {
+  a = lyricsNorm(a); b = lyricsNorm(b);
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  if (a.includes(b) || b.includes(a)) return 0.85;
+  const ta = new Set(a.split(' ')), tb = new Set(b.split(' '));
+  let inter = 0; ta.forEach(t => { if (tb.has(t)) inter++; });
+  const union = new Set([...ta, ...tb]).size;
+  return union ? inter / union : 0;
+}
+// Validate a candidate LRCLib hit before accepting it. Prevents returning a
+// completely different song (the main "wrong lyrics" failure mode).
+function lrclibAccept(hit, expectedTrack, expectedArtist) {
+  const tSim = lyricsSimilarity(hit.trackName || hit.name || '', expectedTrack);
+  // Artist often differs in casing/order; relax when we don't have one
+  const aSim = expectedArtist
+    ? lyricsSimilarity(hit.artistName || hit.artist || '', expectedArtist)
+    : 1;
+  // Title match is the dealbreaker; artist is secondary
+  return tSim >= 0.55 && aSim >= 0.25;
+}
+
+// Title-only search: searches without artist filter but still validates the
+// result against the expected artist. Catches cases where LRCLib stored the
+// artist under a different romanization/spelling.
+async function lrclibSearchTitleOnly(track, expectedArtist) {
+  try {
+    const url = `https://lrclib.net/api/search?track_name=${encodeURIComponent(track)}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const arr = await res.json();
+    if (!Array.isArray(arr) || !arr.length) return null;
+    const accepted = arr.filter(x => lrclibAccept(x, track, expectedArtist));
+    if (!accepted.length) return null;
+    const best = accepted.find(x => x.syncedLyrics) || accepted[0];
+    if (best.syncedLyrics || best.plainLyrics) {
+      return { synced: best.syncedLyrics || null, plain: best.plainLyrics || null, source: 'lrclib-search-title' };
+    }
+  } catch(_) {}
+  return null;
+}
+
+// Try LRCLib /api/search for fuzzier matches (better hit rate).
+// Validates results so we don't return obviously-wrong tracks.
+async function lrclibSearch(track, artist) {
+  try {
+    const url = `https://lrclib.net/api/search?track_name=${encodeURIComponent(track)}&artist_name=${encodeURIComponent(artist)}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const arr = await res.json();
+    if (!Array.isArray(arr) || !arr.length) return null;
+    // Filter to candidates that match the query, then prefer synced
+    const accepted = arr.filter(x => lrclibAccept(x, track, artist));
+    if (!accepted.length) return null;
+    const best = accepted.find(x => x.syncedLyrics) || accepted[0];
+    if (best.syncedLyrics || best.plainLyrics) {
+      return { synced: best.syncedLyrics || null, plain: best.plainLyrics || null, source: 'lrclib-search' };
+    }
+  } catch(_) {}
+  return null;
+}
+
+// Fetch from local .lrc → LRCLib (get) → LRCLib (search, fuzzy) → user-pasted cache
+async function fetchLyrics(fn, folderName) {
+  // 1. localStorage cache (includes user-pasted)
+  const cached = loadCachedLyrics(fn);
+  if (cached && (cached.synced || cached.plain)) return cached;
+
+  // 2. Local .lrc file
+  const baseName = fn.replace(/\.(mp3|m4a|wav|ogg|flac|wmv)$/i, '');
+  try {
+    const res = await fetch('music/' + encodeURIComponent(baseName) + '.lrc');
+    if (res.ok) {
+      const text = await res.text();
+      const payload = { synced: text, plain: null, source: 'local-lrc' };
+      saveCachedLyrics(fn, payload);
+      return payload;
+    }
+  } catch(_) {}
+
+  // Try multiple query variants on LRCLib
+  const { artist, title } = lyricsParseFilename(fn, folderName);
+  const variants = [];
+  // a) Strip parentheticals from title
+  const noParen = title.replace(/\s*[\(\[（［][^)\]）］]*[\)\]）］]\s*/g, ' ').replace(/\s+/g, ' ').trim();
+  // b) Strip trailing English/romanization in parens (often present in K-pop)
+  // c) Drop everything after the first '-' or '/' (sometimes albums attached)
+  const baseTitle = title.split(/[\-\/|·]/)[0].trim();
+  if (title) variants.push({ track: title, artist });
+  if (noParen && noParen !== title) variants.push({ track: noParen, artist });
+  if (baseTitle && baseTitle !== title && baseTitle !== noParen) variants.push({ track: baseTitle, artist });
+
+  // 3. LRCLib /api/get for each variant
+  for (const v of variants) {
+    try {
+      const url = `https://lrclib.net/api/get?track_name=${encodeURIComponent(v.track)}&artist_name=${encodeURIComponent(v.artist)}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.syncedLyrics || data.plainLyrics) {
+          const payload = { synced: data.syncedLyrics || null, plain: data.plainLyrics || null, source: 'lrclib-get' };
+          saveCachedLyrics(fn, payload);
+          return payload;
+        }
+      }
+    } catch(_) {}
+  }
+
+  // 4. LRCLib /api/search (fuzzy match — better recall, handles typos/transliteration)
+  for (const v of variants) {
+    const hit = await lrclibSearch(v.track, v.artist);
+    if (hit) { saveCachedLyrics(fn, hit); return hit; }
+  }
+  // Also try search by title only — but still require artist similarity in the
+  // hit, otherwise we'd accept a totally different song with the same title.
+  for (const v of variants) {
+    const hit = await lrclibSearchTitleOnly(v.track, artist);
+    if (hit) { saveCachedLyrics(fn, hit); return hit; }
+  }
+
+  return null;
+}
+
+// Multi-line lyrics editor (replaces native prompt — preserves line breaks)
+// ── Output device picker ──
+let osCurrentDevice = 'iphone';
+let osVolume = 0.7;
+try {
+  const v = localStorage.getItem('fg_osVolume');
+  if (v !== null) osVolume = Math.max(0, Math.min(1, parseFloat(v)));
+  const d = localStorage.getItem('fg_osDevice');
+  if (d) osCurrentDevice = d;
+} catch(_) {}
+
+// Volume policy:
+//   - On platforms that respect HTMLAudio.volume (desktop, iPadOS, macOS), the
+//     slider just sets audio.volume — no Web Audio routing required.
+//   - iOS Safari ignores audio.volume. We could route audio through a Web Audio
+//     master gain, but that causes the AudioContext to be suspended on lock-
+//     screen → no sound output even though playback continues. The lockscreen
+//     regression is worse than not having software volume, so we DO NOT force
+//     Web Audio just for volume on iOS.
+//   - If the user enables MUSE effects, Web Audio is already running for those;
+//     the master gain in MUSE's chain will then honour the slider naturally.
+function ensureSoftwareVolume() {
+  // Only piggy-back on Web Audio when the user has already engaged MUSE.
+  // Never initialise Web Audio purely for volume on iOS — keeps lockscreen
+  // playback working.
+  if (window.museCtx && window.museCtx.state === 'suspended') {
+    try { window.museCtx.resume(); } catch(_) {}
+  }
+  return true;
+}
+
+function openOutputSheet() {
+  // Load current track info into the header
+  const fn = currentQueue[currentIdx];
+  const img = document.getElementById('osHeaderArt');
+  if (img) {
+    img.classList.remove('loaded');
+    img.removeAttribute('src');
+    if (fn && typeof loadCardArt === 'function') loadCardArt(fn, img);
+  }
+  const titleEl  = document.getElementById('osHeaderTitle');
+  const artistEl = document.getElementById('osHeaderArtist');
+  if (titleEl && artistEl) {
+    if (fn) {
+      const baseTitle = fn.replace(/\.(mp3|m4a|wav|ogg|flac|wmv)$/i, '');
+      // Split "Artist - Title" if present
+      const dash = baseTitle.indexOf(' - ');
+      const folderName = (currentFolder !== null && playlist[currentFolder]) ? playlist[currentFolder].folder : '';
+      if (dash > 0) {
+        titleEl.textContent  = baseTitle.substring(dash + 3).trim();
+        artistEl.textContent = baseTitle.substring(0, dash).trim();
+      } else {
+        titleEl.textContent  = baseTitle;
+        artistEl.textContent = folderName;
+      }
+    } else {
+      titleEl.textContent = 'No song playing';
+      artistEl.textContent = '';
+    }
+  }
+  osUpdateSelectedUI();
+  osUpdateVolumeUI();
+  document.getElementById('outputSheetBackdrop').classList.add('open');
+  document.getElementById('outputSheet').classList.add('open');
+}
+function closeOutputSheet() {
+  document.getElementById('outputSheetBackdrop').classList.remove('open');
+  document.getElementById('outputSheet').classList.remove('open');
+}
+
+function osSelectDevice(device) {
+  osCurrentDevice = device;
+  try { localStorage.setItem('fg_osDevice', device); } catch(_) {}
+  osUpdateSelectedUI();
+  // Only the iPhone speaker actually controls audio; the others are visual-only
+  // placeholders for AirPlay-style affordance (Web has no API to stream to LG TV / iMac).
+}
+
+function osUpdateSelectedUI() {
+  document.querySelectorAll('.output-sheet .os-row').forEach(r => {
+    r.classList.toggle('selected', r.dataset.device === osCurrentDevice);
+  });
+}
+
+function osApplyVolume() {
+  // Set HTMLAudio.volume — works on desktop / iPadOS / macOS; ignored by iOS
+  try { audio.volume = osVolume; } catch(_) {}
+  // The real volume control on iOS goes through the MUSE master gain node
+  if (window.museMasterGain) {
+    try { window.museMasterGain.gain.value = osVolume; } catch(_) {}
+  }
+}
+
+function osUpdateVolumeUI() {
+  const pct = (osVolume * 100).toFixed(1) + '%';
+  const fill = document.getElementById('osVolFill');
+  if (fill) fill.style.width = pct;
+  const row = document.querySelector('.os-row-iphone');
+  if (row) row.style.setProperty('--vw', pct);
+  osApplyVolume();
+}
+
+// Apply persisted volume on load
+try { audio.volume = osVolume; } catch(_) {}
+
+// Touch handlers on the iPhone speaker row — drag horizontally to set volume.
+// Wire after DOM ready (run inside an IIFE that runs immediately at script time
+// since the row already exists in static HTML).
+(() => {
+  const row = document.querySelector('.os-row[data-device="iphone"]');
+  if (!row) return;
+  let dragging = false;
+  const setFromX = (clientX) => {
+    const r = row.getBoundingClientRect();
+    const x = Math.max(0, Math.min(r.width, clientX - r.left));
+    osVolume = x / r.width;
+    osUpdateVolumeUI();
+  };
+  const onStart = (e) => {
+    // Only act when iPhone is the selected device (otherwise the row is a select-target)
+    if (osCurrentDevice !== 'iphone') return;
+    // Lazily wire up the Web Audio master gain (must be inside a user gesture).
+    // This routes audio through MUSE's chain so the gain takes effect on iOS.
+    ensureSoftwareVolume();
+    dragging = true;
+    row.classList.add('dragging');
+    const t = e.touches ? e.touches[0] : e;
+    setFromX(t.clientX);
+    if (e.cancelable) e.preventDefault();
+  };
+  const onMove = (e) => {
+    if (!dragging) return;
+    const t = e.touches ? e.touches[0] : e;
+    setFromX(t.clientX);
+    if (e.cancelable) e.preventDefault();
+  };
+  const onEnd = () => {
+    if (!dragging) return;
+    dragging = false;
+    row.classList.remove('dragging');
+    try { localStorage.setItem('fg_osVolume', String(osVolume)); } catch(_) {}
+  };
+  row.addEventListener('touchstart', onStart, { passive: false });
+  row.addEventListener('touchmove',  onMove,  { passive: false });
+  row.addEventListener('touchend',   onEnd);
+  row.addEventListener('touchcancel', onEnd);
+  // Also support mouse for desktop testing
+  row.addEventListener('mousedown', onStart);
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onEnd);
+})();
+
+function openLyricsModal() {
+  const fn = currentQueue[currentIdx];
+  if (!fn) return;
+  const folder = (currentFolder !== null && playlist[currentFolder]) ? playlist[currentFolder].folder : '';
+  const songTitle = fn.replace(/\.(mp3|m4a|wav|ogg|flac|wmv)$/i, '');
+  document.getElementById('lmSongInfo').textContent = songTitle + (folder ? ' · ' + folder : '');
+  const existing = loadCachedLyrics(fn);
+  document.getElementById('lmTextarea').value = existing ? (existing.synced || existing.plain || '') : '';
+  updateLyricsOffsetUI();
+  document.getElementById('lyricsModalBackdrop').classList.add('open');
+  document.getElementById('lyricsModal').classList.add('open');
+  setTimeout(() => {
+    const ta = document.getElementById('lmTextarea');
+    ta.focus();
+    ta.scrollTop = 0;
+  }, 220);
+}
+function closeLyricsModal() {
+  document.getElementById('lyricsModalBackdrop').classList.remove('open');
+  document.getElementById('lyricsModal').classList.remove('open');
+}
+function lyricsModalSave() {
+  const fn = currentQueue[currentIdx];
+  if (!fn) { closeLyricsModal(); return; }
+  const text = document.getElementById('lmTextarea').value;
+  // Preserve newlines exactly as user typed/pasted — only strip trailing whitespace
+  const trimmed = text.replace(/[ \s]+$/g, '');
+  if (!trimmed.trim()) {
+    // Empty save = clear
+    lyricsModalClear();
+    return;
+  }
+  // Detect LRC: any [mm:ss] timestamp anywhere in the text
+  const isLrc = /\[\d{1,2}:\d{2}/.test(trimmed);
+  const payload = isLrc
+    ? { synced: trimmed, plain: null, source: 'user-pasted' }
+    : { synced: null, plain: trimmed, source: 'user-pasted' };
+  saveCachedLyrics(fn, payload);
+  closeLyricsModal();
+  lyricsLastFn = null;
+  loadLyricsForCurrentSong();
+  showToast('Lyrics saved', isLrc ? 'Synced (LRC) format' : 'Plain text');
+}
+function lyricsModalClear() {
+  const fn = currentQueue[currentIdx];
+  if (!fn) { closeLyricsModal(); return; }
+  if (!confirm('Clear lyrics for this song? You can paste new lyrics anytime.')) return;
+  try { localStorage.removeItem('fg_lyrics_' + fn); } catch(_) {}
+  document.getElementById('lmTextarea').value = '';
+  closeLyricsModal();
+  lyricsLastFn = null;
+  loadLyricsForCurrentSong();
+  showToast('Lyrics cleared', '');
+}
+// Alias for backward compat (empty-state button still calls openLyricsPaster)
+function openLyricsPaster() { openLyricsModal(); }
+
+async function loadLyricsForCurrentSong() {
+  const fn = currentQueue[currentIdx];
+  if (!fn) { renderLyricsEmpty(); return; }
+  if (fn === lyricsLastFn) return; // already loaded
+  lyricsLastFn = fn;
+
+  // Load per-song user offset (seconds; stored as ms in localStorage).
+  // Reset auto-offset; it'll be recomputed once silence detection finishes.
+  try {
+    const v = localStorage.getItem('fg_lyrics_offset_' + fn);
+    lyricsUserOffset = v ? parseFloat(v) / 1000 : 0;
+  } catch(_) { lyricsUserOffset = 0; }
+  lyricsAutoOffset = 0;
+  updateLyricsOffsetUI();
+
+  const folder = (currentFolder !== null && playlist[currentFolder]) ? playlist[currentFolder].folder : '';
+  const title = fn.replace(/\.(mp3|m4a|wav|ogg|flac|wmv)$/i, '');
+  // Update the now-playing block inside lyrics view
+  document.getElementById('fpLyricsTitle').textContent = title;
+  document.getElementById('fpLyricsArtist').textContent = folder;
+  const artImg = document.getElementById('fpLyricsArt');
+  artImg.classList.remove('loaded');
+  artImg.removeAttribute('src');
+  if (typeof loadCardArt === 'function') loadCardArt(fn, artImg);
+
+  const scroll = document.getElementById('fpLyricsScroll');
+  scroll.innerHTML = `<div class="fp-lyrics-loading">Loading lyrics...</div>`;
+
+  const payload = await fetchLyrics(fn, folder);
+  if (!payload || (!payload.synced && !payload.plain)) {
+    scroll.innerHTML = `<div class="fp-lyrics-empty">No lyrics available for this song.<br>
+      <span style="font-size:11px;opacity:.7;display:block;margin-top:8px">Tried LRCLib (multiple variants). Try the button below to paste lyrics from any web page.</span>
+      <button onclick="openLyricsPaster()" style="margin-top:14px;background:#7d57e5;color:white;border:none;padding:9px 18px;border-radius:18px;font-size:13px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer">Paste lyrics</button>
+    </div>`;
+    lyricsLines = [];
+    return;
+  }
+
+  if (payload.synced) {
+    lyricsLines = parseLRC(payload.synced);
+  } else {
+    // Plain only — no timestamps
+    lyricsLines = payload.plain.split(/\r?\n/).map(t => t.trim()).filter(Boolean).map(text => ({ t: -1, text }));
+  }
+  renderLyricsLines();
+
+  // Fire-and-forget: detect leading silence and apply as auto-offset.
+  // Does NOT block rendering; updates highlight when measurement completes.
+  const songUrl = 'music/' + encodeURIComponent(fn);
+  detectLeadingSilence(songUrl, fn).then(silence => {
+    if (currentQueue[currentIdx] !== fn) return; // user switched songs
+    const firstSynced = (lyricsLines.find(l => l.t >= 0) || {}).t;
+    const auto = computeAutoLyricsOffset(silence, firstSynced ?? -1);
+    if (Math.abs(auto - lyricsAutoOffset) < 0.001) return;
+    lyricsAutoOffset = auto;
+    updateLyricsOffsetUI();
+    lyricsCurrentIdx = -999; // force redraw with new effective offset
+    if (audio.duration) updateLyricsHighlight(audio.currentTime);
+  }).catch(()=>{});
+}
+
+function renderLyricsLines() {
+  const scroll = document.getElementById('fpLyricsScroll');
+  if (!lyricsLines.length) {
+    scroll.innerHTML = `<div class="fp-lyrics-empty">No lyrics available.</div>`;
+    return;
+  }
+  scroll.innerHTML = lyricsLines.map((ln, i) => {
+    const hasWords = !!(ln.words && ln.words.length);
+    let inner;
+    if (hasWords) {
+      inner = ln.words.map((w, wi) =>
+        `<span class="fp-word future" data-wi="${wi}">${esc(w.text)}</span>`
+      ).join('');
+    } else {
+      inner = esc(ln.text || ' ');
+    }
+    return `<div class="fp-lyric-line${hasWords ? ' has-words' : ''}" data-idx="${i}" data-t="${ln.t}" onclick="seekToLyric(${i})">${inner}</div>`;
+  }).join('');
+  lyricsCurrentIdx = -1;
+}
+
+function renderLyricsEmpty() {
+  const scroll = document.getElementById('fpLyricsScroll');
+  if (scroll) scroll.innerHTML = `<div class="fp-lyrics-empty">No song playing.</div>`;
+}
+
+// Estimate which unsynced line is "current" based on even distribution
+// across the song's vocal range (skip typical intro/outro).
+function estimateUnsyncedLineIdx(currentTime) {
+  const duration = audio.duration;
+  if (!duration || !isFinite(duration) || !lyricsLines.length) return -1;
+  // Skip ~5% (or 8s, whichever smaller) for intro,
+  // and ~8% (or 12s) for outro/fade.
+  const startOffset = Math.min(8, duration * 0.05);
+  const endOffset   = Math.min(12, duration * 0.08);
+  const usable = duration - startOffset - endOffset;
+  if (usable <= 0) return -1;
+  const elapsed = currentTime - startOffset;
+  if (elapsed < 0) return 0; // before vocals start → first line
+  const pct = Math.min(1, elapsed / usable);
+  return Math.min(lyricsLines.length - 1, Math.floor(pct * lyricsLines.length));
+}
+
+// Pick the active line index for the given (offset-adjusted) time.
+function pickLyricLineIdx(t) {
+  if (!lyricsLines.length) return -1;
+  const hasSynced = lyricsLines.some(l => l.t >= 0);
+  if (!hasSynced) return estimateUnsyncedLineIdx(t);
+  let idx = -1;
+  for (let i = 0; i < lyricsLines.length; i++) {
+    if (lyricsLines[i].t < 0) continue;
+    if (lyricsLines[i].t <= t) idx = i;
+    else break;
+  }
+  return idx;
+}
+
+// Called every animation frame while lyrics are active (and on demand).
+// Handles both line-level transitions and word-level karaoke fill.
+function updateLyricsHighlight(currentTime) {
+  if (!lyricsLines.length) return;
+  // Positive offsets ⇒ delay lyrics (compare against earlier time).
+  // Total = user (manual fine-tune) + auto (silence-padding compensation)
+  const t = currentTime - lyricsUserOffset - lyricsAutoOffset;
+  const newIdx = pickLyricLineIdx(t);
+
+  // Line transition: rewrite classes + scroll only when the active line changes
+  if (newIdx !== lyricsCurrentIdx) {
+    const lines = document.querySelectorAll('.fp-lyric-line');
+    lines.forEach((el, i) => {
+      el.classList.toggle('current', i === newIdx);
+      el.classList.toggle('past', newIdx >= 0 && i < newIdx);
+    });
+    if (newIdx >= 0) {
+      const el = lines[newIdx];
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    lyricsCurrentIdx = newIdx;
+  }
+
+  // Word-level karaoke for the current line (only if it has per-word timing)
+  if (newIdx < 0) return;
+  const cur = lyricsLines[newIdx];
+  if (!cur || !cur.words || !cur.words.length) return;
+  const lineEl = document.querySelector(`.fp-lyric-line[data-idx="${newIdx}"]`);
+  if (!lineEl) return;
+  const spans = lineEl.children;
+  for (let i = 0; i < cur.words.length; i++) {
+    const w = cur.words[i];
+    const span = spans[i];
+    if (!span) continue;
+    if (t >= w.end) {
+      if (span.className !== 'fp-word sung') span.className = 'fp-word sung';
+      span.style.removeProperty('--progress');
+    } else if (t >= w.t) {
+      const dur = Math.max(0.001, w.end - w.t);
+      const pct = Math.max(0, Math.min(100, ((t - w.t) / dur) * 100));
+      if (!span.classList.contains('singing')) span.className = 'fp-word singing';
+      span.style.setProperty('--progress', pct.toFixed(2));
+    } else {
+      if (span.className !== 'fp-word future') span.className = 'fp-word future';
+      span.style.removeProperty('--progress');
+    }
+  }
+}
+
+// RAF-driven sync clock. Polls audio.currentTime at the display refresh rate
+// (typically 60Hz on iOS Safari) — far smoother than the ~4–10Hz `timeupdate`.
+let lyricsRAF = 0;
+function startLyricsClock() {
+  cancelAnimationFrame(lyricsRAF);
+  const tick = () => {
+    if (!window._lyricsActive) { lyricsRAF = 0; return; }
+    updateLyricsHighlight(audio.currentTime);
+    lyricsRAF = requestAnimationFrame(tick);
+  };
+  lyricsRAF = requestAnimationFrame(tick);
+}
+function stopLyricsClock() {
+  if (lyricsRAF) cancelAnimationFrame(lyricsRAF);
+  lyricsRAF = 0;
+}
+
+function updateLyricsOffsetUI() {
+  const el = document.getElementById('fpLyricsOffsetLabel');
+  if (!el) return;
+  const v = lyricsUserOffset;
+  el.textContent = (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1) + 's';
+  el.classList.toggle('nonzero', Math.abs(v) > 0.0001);
+  // Show auto-offset (from silence detection) alongside, if any
+  const autoEl = document.getElementById('fpLyricsAutoOffset');
+  if (autoEl) {
+    if (lyricsAutoOffset > 0.005) {
+      autoEl.textContent = 'auto +' + lyricsAutoOffset.toFixed(2) + 's';
+      autoEl.style.display = '';
+    } else {
+      autoEl.style.display = 'none';
+    }
+  }
+}
+
+function adjustLyricsOffset(delta) {
+  lyricsUserOffset = Math.round((lyricsUserOffset + delta) * 10) / 10;
+  if (lyricsUserOffset > 10) lyricsUserOffset = 10;
+  if (lyricsUserOffset < -10) lyricsUserOffset = -10;
+  persistLyricsOffset();
+  updateLyricsOffsetUI();
+  lyricsCurrentIdx = -999;
+  if (audio.duration) updateLyricsHighlight(audio.currentTime);
+}
+
+function resetLyricsOffset() {
+  lyricsUserOffset = 0;
+  persistLyricsOffset();
+  updateLyricsOffsetUI();
+  lyricsCurrentIdx = -999;
+  if (audio.duration) updateLyricsHighlight(audio.currentTime);
+}
+
+function persistLyricsOffset() {
+  const fn = currentQueue[currentIdx];
+  if (!fn) return;
+  try {
+    if (Math.abs(lyricsUserOffset) < 0.0001) localStorage.removeItem('fg_lyrics_offset_' + fn);
+    else localStorage.setItem('fg_lyrics_offset_' + fn, String(Math.round(lyricsUserOffset * 1000)));
+  } catch(_) {}
+}
+
+function seekToLyric(idx) {
+  const ln = lyricsLines[idx];
+  if (!ln) return;
+  const off = lyricsUserOffset + lyricsAutoOffset;
+  if (ln.t >= 0) {
+    audio.currentTime = ln.t + off;
+  } else {
+    const duration = audio.duration;
+    if (!duration || !isFinite(duration)) return;
+    const startOffset = Math.min(8, duration * 0.05);
+    const endOffset   = Math.min(12, duration * 0.08);
+    const usable = duration - startOffset - endOffset;
+    if (usable > 0) audio.currentTime = startOffset + (idx / lyricsLines.length) * usable + off;
+  }
+  if (audio.paused) audio.play().catch(()=>{});
+}
+
+function toggleLyrics() {
+  const fp = document.getElementById('fullPlayer');
+  const btn = document.getElementById('fpBbLyrics');
+  window._lyricsActive = !window._lyricsActive;
+  fp.classList.toggle('lyrics-mode', window._lyricsActive);
+  btn.classList.toggle('lyrics-active', window._lyricsActive);
+  if (window._lyricsActive) {
+    loadLyricsForCurrentSong();
+    if (audio.duration) updateLyricsHighlight(audio.currentTime);
+    startLyricsClock();
+  } else {
+    stopLyricsClock();
+  }
+}
+
+// Auto-reload lyrics when song changes (only if lyrics mode is on).
+// Reset the user offset; we re-load per-song in loadLyricsForCurrentSong.
+audio.addEventListener('loadedmetadata', () => {
+  if (window._lyricsActive) {
+    lyricsLastFn = null; // force reload
+    loadLyricsForCurrentSong();
+    if (!lyricsRAF) startLyricsClock();
+  }
+});
 
 function seekBar(bar, e) {
   const rect = bar.getBoundingClientRect();
@@ -3740,6 +6459,26 @@ document.getElementById('drawerOverlay').onclick   = closeDrawer;
 document.getElementById('btnSettings').onclick = () => {};
 
 
+// When iOS launches the wrong PWA (e.g., a different installed PWA gets
+// activated by the lockscreen widget) and the user later returns here, our
+// WebView may have been suspended and audio paused. Auto-resume if we were
+// playing right before losing focus, so playback continues invisibly.
+let _wasPlayingBeforeHide = false;
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    _wasPlayingBeforeHide = !audio.paused;
+  } else if (_wasPlayingBeforeHide && audio.paused && audio.src) {
+    audio.play().catch(() => {});
+  }
+});
+// Some iOS versions don't fire visibilitychange when standalone WebView
+// resumes — pageshow with persisted=true is a reliable secondary signal.
+window.addEventListener('pageshow', (e) => {
+  if (e.persisted && _wasPlayingBeforeHide && audio.paused && audio.src) {
+    audio.play().catch(() => {});
+  }
+});
+
 // ── KEYBOARD ──
 document.addEventListener('keydown', e => {
   if (e.target === document.getElementById('stSearchInput')) return;
@@ -3763,26 +6502,73 @@ function setupMediaSession() {
   navigator.mediaSession.setActionHandler('pause',         () => { audio.pause(); setPlayIcons(false); });
   navigator.mediaSession.setActionHandler('previoustrack', prevTrack);
   navigator.mediaSession.setActionHandler('nexttrack',     nextTrack);
-  try { navigator.mediaSession.setActionHandler('seekbackward', null); } catch(e) {}
-  try { navigator.mediaSession.setActionHandler('seekforward',  null); } catch(e) {}
+  // Seeking handlers — providing these (instead of null) keeps the widget
+  // bound to this PWA's session on iOS, so a widget tap focuses the PWA
+  // instead of opening the audio URL in a fresh Safari tab.
+  try {
+    navigator.mediaSession.setActionHandler('seekbackward', (e) => {
+      audio.currentTime = Math.max(0, audio.currentTime - (e.seekOffset || 10));
+    });
+  } catch(_) {}
+  try {
+    navigator.mediaSession.setActionHandler('seekforward', (e) => {
+      audio.currentTime = Math.min(audio.duration || 0, audio.currentTime + (e.seekOffset || 10));
+    });
+  } catch(_) {}
+  try {
+    navigator.mediaSession.setActionHandler('seekto', (e) => {
+      if (typeof e.seekTime === 'number') audio.currentTime = e.seekTime;
+    });
+  } catch(_) {}
+  try {
+    navigator.mediaSession.setActionHandler('stop', () => { audio.pause(); setPlayIcons(false); });
+  } catch(_) {}
 }
 setupMediaSession();
 
+// Keep the lockscreen progress in sync — required for iOS to consider the
+// PWA the authoritative source of the now-playing session.
+function updateMediaSessionPosition() {
+  if (!('mediaSession' in navigator) || !('setPositionState' in navigator.mediaSession)) return;
+  if (!audio.duration || !isFinite(audio.duration)) return;
+  try {
+    navigator.mediaSession.setPositionState({
+      duration: audio.duration,
+      playbackRate: audio.playbackRate || 1,
+      position: Math.min(audio.currentTime || 0, audio.duration)
+    });
+  } catch(_) {}
+}
+audio.addEventListener('loadedmetadata', updateMediaSessionPosition);
+audio.addEventListener('durationchange', updateMediaSessionPosition);
+audio.addEventListener('seeked', updateMediaSessionPosition);
+audio.addEventListener('ratechange', updateMediaSessionPosition);
+// Throttled progress sync (every ~1s) — avoids overwhelming the bridge
+let _msPosTimer = 0;
+audio.addEventListener('timeupdate', () => {
+  const now = Date.now();
+  if (now - _msPosTimer > 950) { _msPosTimer = now; updateMediaSessionPosition(); }
+});
+
 audio.addEventListener('play', () => {
   document.querySelectorAll('.ha-card.now-playing').forEach(c => c.classList.remove('audio-paused'));
+  const badge = document.getElementById('fpQualityBadge');
+  if (badge) badge.classList.remove('paused');
   if (!('mediaSession' in navigator)) return;
   navigator.mediaSession.playbackState = 'playing';
-  setupMediaSession(); // re-register after each play — iOS requires this after audio session activates
+  setupMediaSession();
 });
 audio.addEventListener('pause', () => {
   document.querySelectorAll('.ha-card.now-playing').forEach(c => c.classList.add('audio-paused'));
+  const badge = document.getElementById('fpQualityBadge');
+  if (badge) badge.classList.add('paused');
   if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
 });
 
 // ── STATE PERSISTENCE (localStorage) ──
 function saveState() {
   try {
-    localStorage.setItem('fg_recent',    JSON.stringify(recentPlays.slice(0, 30)));
+    localStorage.setItem('fg_recent',    JSON.stringify(recentPlays.slice(0, 100)));
     localStorage.setItem('fg_folder',    JSON.stringify(currentFolder));
     localStorage.setItem('fg_queue',     JSON.stringify(currentQueue));
     localStorage.setItem('fg_origQueue', JSON.stringify(originalQueue));
@@ -3796,6 +6582,9 @@ function restoreState() {
   try {
     const rp = localStorage.getItem('fg_recent');
     if (rp) recentPlays = JSON.parse(rp);
+
+    const ra = localStorage.getItem('fg_recentAdded');
+    if (ra) recentAdded = JSON.parse(ra);
 
     const cf = localStorage.getItem('fg_folder');
     if (cf !== null) currentFolder = JSON.parse(cf);
@@ -3832,7 +6621,12 @@ function restoreState() {
       loadAlbumArt('music/' + encodeURIComponent(fn));
       // 셔플/반복 버튼
       ['fpShuffle','dShuffle'].forEach(id => { const b = document.getElementById(id); if(b) b.classList.toggle('active', shuffle); });
-      ['fpRepeat','dRepeat'].forEach(id => { const b = document.getElementById(id); if(b) b.classList.toggle('active', repeat !== 'none'); });
+      ['fpRepeat','dRepeat'].forEach(id => {
+        const b = document.getElementById(id);
+        if (!b) return;
+        b.classList.toggle('active', repeat !== 'none');
+        b.classList.toggle('repeat-one', repeat === 'one');
+      });
       highlightPlaying(fn);
       updateMediaSessionMetadata(title, folderName, artCache.has(fn) ? artCache.get(fn) : null);
     }
@@ -3867,7 +6661,7 @@ function switchActivityTab(tab) {
 function renderActivityCards() {
   const container = document.getElementById('haScrollContainer');
   if (!container) return;
-  const data = activityTab === 'played' ? recentPlays : [];
+  const data = activityTab === 'played' ? recentPlays : recentAdded;
   if (!data.length) {
     container.innerHTML = `<div class="ha-empty">${activityTab === 'played' ? '재생한 곡이 없습니다' : '추가된 곡이 없습니다'}</div>`;
     return;
@@ -3889,7 +6683,7 @@ function renderActivityCards() {
     if (fav) {
       statusIcons += `<div class="ha-ctrl-btn" aria-label="Favorite" style="color:#ff8a95"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div>`;
     }
-    return `<div class="${cls}" onclick="playRecentItem(${i})">
+    return `<div class="${cls}" data-idx="${i}" onclick="playActivityCard(${i})">
       <div class="ha-card-art">
         <img id="ha-img-${i}" alt="">
         <span class="ha-art-fb">${icon}</span>
@@ -3906,6 +6700,144 @@ function renderActivityCards() {
   data.forEach((r, i) => {
     const img = document.getElementById(`ha-img-${i}`);
     if (img) loadCardArt(r.fn, img);
+  });
+  attachHaCardSwipeUp();
+}
+
+// Click handler that respects which tab is active (Played vs Added).
+function playActivityCard(i) {
+  const arr = activityTab === 'played' ? recentPlays : recentAdded;
+  const r = arr[i];
+  if (!r) return;
+  const fi = r.folderIdx;
+  if (fi === null || !playlist[fi]) return;
+  const si = playlist[fi].songs.indexOf(r.fn);
+  if (si < 0) return;
+  selectFolder(fi);
+  playFromFolder(fi, si);
+}
+
+// Remove a card's underlying entry (tab-aware). Used by swipe-up dismiss.
+// Uses the FLIP technique to smoothly slide remaining cards into the gap:
+//   F – record each remaining card's screen position BEFORE the data changes
+//   L – render the new DOM (cards now sit at their new positions)
+//   I – apply an inverse translateX so each card visually starts at its old
+//       position again — no visible jump
+//   P – release the inverse transform on the next frame with a fast-start /
+//       slow-finish easing so motion feels smooth at the end
+function removeActivityCardAt(i) {
+  const container = document.getElementById('haScrollContainer');
+  if (!container) return;
+
+  // (F) Capture pre-change left positions, keyed by old index
+  const oldCards = Array.from(container.querySelectorAll('.ha-card'));
+  const firstLefts = new Map();
+  oldCards.forEach((c, oldIdx) => {
+    if (oldIdx === i) return; // skip the card being removed
+    firstLefts.set(oldIdx, c.getBoundingClientRect().left);
+  });
+
+  // Mutate the data + re-render the list
+  if (activityTab === 'played') {
+    if (i >= 0 && i < recentPlays.length) {
+      recentPlays.splice(i, 1);
+      saveState();
+    }
+  } else {
+    if (i >= 0 && i < recentAdded.length) {
+      recentAdded.splice(i, 1);
+      try { localStorage.setItem('fg_recentAdded', JSON.stringify(recentAdded)); } catch(_) {}
+    }
+  }
+  renderActivityCards();
+
+  // (L + I + P) Animate each remaining card from its old left back to its new
+  const newCards = Array.from(container.querySelectorAll('.ha-card'));
+  newCards.forEach((c, newIdx) => {
+    // newIdx N in the new list corresponds to oldIdx N (if N < i) or N+1 (else)
+    const oldIdx = newIdx >= i ? newIdx + 1 : newIdx;
+    const firstLeft = firstLefts.get(oldIdx);
+    if (firstLeft === undefined) return;
+    const lastLeft = c.getBoundingClientRect().left;
+    const dx = firstLeft - lastLeft;
+    if (Math.abs(dx) < 1) return; // didn't actually move
+    // Invert: place the card visually back where it was
+    c.style.transition = 'none';
+    c.style.transform = `translateX(${dx}px)`;
+    // Force layout commit so the next frame's transition can run
+    void c.offsetWidth;
+    requestAnimationFrame(() => {
+      // Play: ease-out-quint — snappy initial motion, soft glide at the end
+      c.style.transition = 'transform .42s cubic-bezier(0.22, 1, 0.36, 1)';
+      c.style.transform = '';
+    });
+    // Clean up styles once the animation finishes so subsequent swipe handlers
+    // are not affected.
+    c.addEventListener('transitionend', () => {
+      c.style.transition = '';
+      c.style.transform = '';
+    }, { once: true });
+  });
+}
+
+// Swipe-up-to-dismiss for home activity cards. Modeled after iOS app-switcher
+// dismissal: card translates up + fades; release past 30% of card height flicks
+// it off and removes it from the underlying list. Release earlier ⇒ snap back.
+function attachHaCardSwipeUp() {
+  const cards = document.querySelectorAll('#haScrollContainer .ha-card');
+  cards.forEach(card => {
+    let startX = 0, startY = 0, dy = 0, locked = false, dir = 0, active = false;
+    const onStart = (e) => {
+      const t = e.touches ? e.touches[0] : e;
+      startX = t.clientX; startY = t.clientY; dy = 0; locked = false; dir = 0; active = true;
+      card.classList.remove('snap-back', 'flick-off');
+      card.classList.add('swiping');
+    };
+    const onMove = (e) => {
+      if (!active) return;
+      const t = e.touches ? e.touches[0] : e;
+      const ddx = t.clientX - startX;
+      const ddy = t.clientY - startY;
+      if (!locked) {
+        if (Math.abs(ddx) < 8 && Math.abs(ddy) < 8) return;
+        // Horizontal-dominant ⇒ let the row scroll horizontally
+        if (Math.abs(ddx) > Math.abs(ddy)) { active = false; card.classList.remove('swiping'); return; }
+        // Only catch upward swipes
+        if (ddy >= 0) { active = false; card.classList.remove('swiping'); return; }
+        locked = true; dir = -1;
+      }
+      // ddy is negative (up); allow some down-slack but only up to 0
+      dy = Math.min(0, ddy);
+      const cardH = card.getBoundingClientRect().height;
+      const progress = Math.min(1, -dy / cardH);
+      card.style.transform = `translateY(${dy}px)`;
+      card.style.opacity = String(1 - progress * 0.85);
+      if (e.cancelable) e.preventDefault();
+    };
+    const onEnd = () => {
+      if (!active) return;
+      active = false;
+      card.classList.remove('swiping');
+      const cardH = card.getBoundingClientRect().height;
+      if (-dy > cardH * 0.3) {
+        // Commit: animate off and remove from the active tab's data
+        card.classList.add('flick-off');
+        card.style.transform = `translateY(-${cardH + 40}px)`;
+        card.style.opacity = '0';
+        const removeIdx = parseInt(card.dataset.idx || '-1', 10);
+        setTimeout(() => removeActivityCardAt(removeIdx), 260);
+      } else {
+        card.classList.add('snap-back');
+        card.style.transform = '';
+        card.style.opacity = '';
+        setTimeout(() => card.classList.remove('snap-back'), 280);
+      }
+      dy = 0;
+    };
+    card.addEventListener('touchstart', onStart, { passive: true });
+    card.addEventListener('touchmove',  onMove,  { passive: false });
+    card.addEventListener('touchend',   onEnd);
+    card.addEventListener('touchcancel', onEnd);
   });
 }
 
@@ -3943,7 +6875,7 @@ function setRaTabUI(tab) {
 function renderRaList() {
   const list = document.getElementById('raList');
   if (!list) return;
-  const data = raCurrentTab === 'played' ? recentPlays : [];
+  const data = raCurrentTab === 'played' ? recentPlays : recentAdded;
   if (!data.length) {
     list.innerHTML = `<div class="ra-empty">${raCurrentTab === 'played' ? '재생한 곡이 없습니다' : '추가된 곡이 없습니다'}</div>`;
     return;
@@ -3958,37 +6890,139 @@ function renderRaList() {
     let statusIcons = '';
     if (inLL) statusIcons += `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="12" r="7"/><polyline points="11 8 11 12 13.5 13.5"/><line x1="18" y1="5" x2="22" y2="5"/><line x1="20" y1="3" x2="20" y2="7"/></svg>`;
     if (fav) statusIcons += `<svg viewBox="0 0 24 24" fill="#ff8a95" stroke="#ff8a95" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
-    return `<div class="ra-item" style="--idx:${i}" onclick="raPlayItem(${i})">
-      <div class="ra-art">
-        <img id="ra-img-${i}" alt="">
-        <span class="ra-art-fb">${folderIcon}</span>
-      </div>
-      <div class="ra-info">
-        <div class="ra-album-label">Album</div>
-        <div class="ra-item-title">${esc(title)}</div>
-        <div class="ra-artist">${esc(folderName)}</div>
-        ${statusIcons ? `<div class="ra-item-status">${statusIcons}</div>` : ''}
-      </div>
-      <button class="ra-more-btn" onclick="event.stopPropagation();raMoreClick(${i})" aria-label="더보기">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-          <circle cx="5" cy="12" r="1.7"/>
-          <circle cx="12" cy="12" r="1.7"/>
-          <circle cx="19" cy="12" r="1.7"/>
+    return `<div class="ra-row" data-idx="${i}" style="--idx:${i}">
+      <div class="ra-delete-bg">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"/>
+          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+          <path d="M10 11v6"/><path d="M14 11v6"/>
         </svg>
-      </button>
+        <span class="ll-delete-text">Delete</span>
+      </div>
+      <div class="ra-item ra-swipe-content" onclick="raRowClick(event, ${i})">
+        <div class="ra-art">
+          <img id="ra-img-${i}" alt="">
+          <span class="ra-art-fb">${folderIcon}</span>
+        </div>
+        <div class="ra-info">
+          <div class="ra-album-label">Album</div>
+          <div class="ra-item-title">${esc(title)}</div>
+          <div class="ra-artist">${esc(folderName)}</div>
+          ${statusIcons ? `<div class="ra-item-status">${statusIcons}</div>` : ''}
+        </div>
+        <button class="ra-more-btn" onclick="event.stopPropagation();raMoreClick(${i})" aria-label="더보기">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="5" cy="12" r="1.7"/>
+            <circle cx="12" cy="12" r="1.7"/>
+            <circle cx="19" cy="12" r="1.7"/>
+          </svg>
+        </button>
+      </div>
     </div>`;
   }).join('');
   data.forEach((r, i) => {
     const img = document.getElementById(`ra-img-${i}`);
     if (img) loadCardArt(r.fn, img);
   });
+  attachRaSwipeHandlers();
+}
+
+// Tap handler that ignores clicks fired after a swipe gesture
+function raRowClick(ev, i) {
+  const row = ev.currentTarget.parentElement;
+  if (row && row.dataset.swiped === '1') { row.dataset.swiped = ''; return; }
+  raPlayItem(i);
+}
+
+// Delete a Recent Activity row from whichever list backs the active tab
+function raDeleteAt(i) {
+  if (raCurrentTab === 'played') {
+    if (i >= 0 && i < recentPlays.length) {
+      recentPlays.splice(i, 1);
+      saveState();
+    }
+  } else {
+    if (i >= 0 && i < recentAdded.length) {
+      recentAdded.splice(i, 1);
+      try { localStorage.setItem('fg_recentAdded', JSON.stringify(recentAdded)); } catch(_) {}
+    }
+  }
+  renderRaList();
+  // Re-trigger cascade animation
+  const screen = document.getElementById('recentActivityScreen');
+  if (screen) {
+    screen.classList.remove('cascade');
+    void screen.offsetWidth;
+    setTimeout(() => screen.classList.add('cascade'), 30);
+  }
+  // Also refresh the home view's activity strip
+  renderActivityCards();
+}
+
+// Swipe-right-to-delete for Recent Activity rows (same pattern as Listen Later).
+function attachRaSwipeHandlers() {
+  const rows = document.querySelectorAll('#raList .ra-row');
+  rows.forEach(row => {
+    const content = row.querySelector('.ra-swipe-content');
+    if (!content) return;
+    let startX = 0, startY = 0, dx = 0, locked = false, active = false;
+    const onStart = (e) => {
+      const t = e.touches ? e.touches[0] : e;
+      startX = t.clientX; startY = t.clientY; dx = 0; locked = false; active = true;
+      content.style.transition = 'none';
+    };
+    const onMove = (e) => {
+      if (!active) return;
+      const t = e.touches ? e.touches[0] : e;
+      const ddx = t.clientX - startX;
+      const ddy = t.clientY - startY;
+      if (!locked) {
+        if (Math.abs(ddx) < 6 && Math.abs(ddy) < 6) return;
+        if (Math.abs(ddy) > Math.abs(ddx)) { active = false; return; }
+        locked = true;
+        row.classList.add('swiping');
+      }
+      dx = Math.max(0, ddx);
+      content.style.transform = `translateX(${dx}px)`;
+      if (e.cancelable) e.preventDefault();
+    };
+    const onEnd = () => {
+      if (!active) return;
+      active = false;
+      content.style.transition = 'transform .25s cubic-bezier(.4,0,.2,1)';
+      const width = row.getBoundingClientRect().width;
+      const threshold = width * 0.6;
+      if (dx > threshold) {
+        content.style.transform = `translateX(${width}px)`;
+        row.dataset.swiped = '1';
+        setTimeout(() => {
+          const i = parseInt(row.dataset.idx, 10);
+          if (!isNaN(i)) raDeleteAt(i);
+        }, 220);
+      } else {
+        content.style.transform = '';
+        setTimeout(() => row.classList.remove('swiping'), 260);
+        if (dx > 6) {
+          row.dataset.swiped = '1';
+          setTimeout(() => { row.dataset.swiped = ''; }, 200);
+        }
+      }
+      dx = 0;
+    };
+    content.addEventListener('touchstart', onStart, { passive: true });
+    content.addEventListener('touchmove',  onMove,  { passive: false });
+    content.addEventListener('touchend',   onEnd);
+    content.addEventListener('touchcancel', onEnd);
+  });
 }
 function raMoreClick(i) {
-  const r = recentPlays[i];
+  const arr = raCurrentTab === 'played' ? recentPlays : recentAdded;
+  const r = arr[i];
   if (r) openSongMenu(r.fn, r.folderIdx, { recentActivity: true });
 }
 function raPlayItem(i) {
-  const r = recentPlays[i];
+  const arr = raCurrentTab === 'played' ? recentPlays : recentAdded;
+  const r = arr[i];
   if (!r) return;
   const fi = r.folderIdx;
   if (fi === null || !playlist[fi]) return;
@@ -4005,10 +7039,34 @@ function loadListenLater() {
     const v = localStorage.getItem('fg_listenLater');
     if (v) {
       listenLater = JSON.parse(v);
-      // Migration: ensure each item has a played boolean
-      listenLater.forEach(r => { if (typeof r.played !== 'boolean') r.played = false; });
+      // Migration: ensure each item has a played boolean + addedAt timestamp.
+      // Old entries without addedAt get the current time as a fallback.
+      const now = Date.now();
+      listenLater.forEach(r => {
+        if (typeof r.played !== 'boolean') r.played = false;
+        if (typeof r.addedAt !== 'number')  r.addedAt = now;
+      });
     }
   } catch(e) {}
+}
+
+// "5 minutes ago" / "2 hours ago" / "3 days ago" / "Jan 5" relative time.
+function relTime(ms) {
+  if (!ms) return '';
+  const diff = Date.now() - ms;
+  if (diff < 0) return 'just now';
+  const sec = Math.floor(diff / 1000);
+  if (sec < 60)  return 'just now';
+  const min = Math.floor(sec / 60);
+  if (min < 60)  return `${min}m ago`;
+  const hr  = Math.floor(min / 60);
+  if (hr  < 24)  return `${hr}h ago`;
+  const day = Math.floor(hr / 24);
+  if (day < 7)   return `${day}d ago`;
+  if (day < 30)  return `${Math.floor(day / 7)}w ago`;
+  const d = new Date(ms);
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${months[d.getMonth()]} ${d.getDate()}`;
 }
 function saveListenLater() {
   try { localStorage.setItem('fg_listenLater', JSON.stringify(listenLater)); } catch(e) {}
@@ -4022,7 +7080,7 @@ function renderListenLaterCard() {
       <p class="ll-sub">Go find more stuff to add to Listen Later.</p>`;
     return;
   }
-  c.innerHTML = listenLater.slice(0, 2).map((r, i) => {
+  c.innerHTML = listenLater.slice(0, 3).map((r, i) => {
     const folder = playlist[r.folderIdx];
     const folderName = folder ? folder.folder : '';
     const folderIcon = folder ? folder.icon : '♫';
@@ -4043,7 +7101,7 @@ function renderListenLaterCard() {
       </div>
     </div>`;
   }).join('');
-  listenLater.slice(0, 2).forEach((r, i) => {
+  listenLater.slice(0, 3).forEach((r, i) => {
     const img = document.getElementById(`ll-card-img-${i}`);
     if (img) loadCardArt(r.fn, img);
   });
@@ -4110,6 +7168,19 @@ function openSongMenu(fn, folderIdx, ctx) {
   // Toggle Listen Later button text/icon
   const inLL = isInListenLater(fn);
   document.getElementById('asListenLaterText').textContent = inLL ? 'Remove from Listen Later' : 'Listen Later';
+  // Show "Mark as played/unplayed" toggle only for songs currently in Listen Later
+  const playedBtn = document.getElementById('asPlayedToggleBtn');
+  const playedText = document.getElementById('asPlayedToggleText');
+  if (playedBtn && playedText) {
+    if (inLL) {
+      playedBtn.style.display = '';
+      const entry = listenLater.find(r => r.fn === fn);
+      const isPlayed = !!(entry && entry.played);
+      playedText.textContent = isPlayed ? 'Mark as unplayed' : 'Mark as played';
+    } else {
+      playedBtn.style.display = 'none';
+    }
+  }
   // Toggle Favorite (heart fill + text)
   const isFav = isFavorite(fn);
   const favIcon = document.getElementById('asFavoriteIcon');
@@ -4187,6 +7258,23 @@ function asGoToAlbum() {
   selectFolder(folderIdx);
   showSongList();
 }
+// Toggle the per-song played/unplayed flag from the song menu.
+// Only valid when the song is already in Listen Later.
+function asTogglePlayed() {
+  if (!asCurrentSong) return;
+  const { fn } = asCurrentSong;
+  const entry = listenLater.find(r => r.fn === fn);
+  if (!entry) { closeSongMenu(); return; }
+  entry.played = !entry.played;
+  saveListenLater();
+  const title = fn.replace(/\.(mp3|m4a|wav|ogg|flac|wmv)$/i, '');
+  closeSongMenu();
+  showToast(entry.played ? 'Marked as played' : 'Marked as unplayed', title);
+  renderListenLaterCard();
+  const llScreen = document.getElementById('listenLaterScreen');
+  if (llScreen && llScreen.classList.contains('open')) renderLlList();
+}
+
 function asToggleListenLater() {
   if (!asCurrentSong) return;
   const { fn, folderIdx } = asCurrentSong;
@@ -4198,9 +7286,14 @@ function asToggleListenLater() {
     closeSongMenu();
     showToast('Removed from Listen Later', title);
   } else {
-    listenLater.unshift({ fn, folderIdx, played: false });
-    if (listenLater.length > 100) listenLater.pop();
+    if (listenLater.length >= 100) {
+      closeSongMenu();
+      showToast('Listen Later가 가득 찼습니다', '최대 100곡까지 추가할 수 있습니다.');
+      return;
+    }
+    listenLater.unshift({ fn, folderIdx, played: false, addedAt: Date.now() });
     saveListenLater();
+    addToRecentAdded(fn, folderIdx, 'll');
     closeSongMenu();
     showToast('Added to Listen Later', title);
   }
@@ -4324,6 +7417,7 @@ function addSongToPlaylist(plId) {
     pl.songs.push({ fn, folderIdx, addedAt: Date.now() });
     pl.lastAddedAt = Date.now();
     savePlaylists2();
+    addToRecentAdded(fn, folderIdx, 'playlist');
   }
   closeAddToPlaylistSheet();
   showToast(exists ? `Already in ${pl.name}` : `Added to ${pl.name}`, songTitle);
@@ -4354,6 +7448,7 @@ function createPlaylistAndAddSong() {
   };
   if (pendingAddSong) {
     pl.songs.push({ ...pendingAddSong, addedAt: Date.now() });
+    addToRecentAdded(pendingAddSong.fn, pendingAddSong.folderIdx, 'playlist');
   }
   playlists2.unshift(pl);
   savePlaylists2();
@@ -4744,7 +7839,7 @@ function closeLlActionSheet() {
   document.getElementById('sheetBackdrop').classList.remove('open');
   document.getElementById('llActionSheet').classList.remove('open');
 }
-function closeAllSheets() { closeSongMenu(); closeLlActionSheet(); closeAddToPlaylistSheet(); closePlActionSheet(); }
+function closeAllSheets() { closeSongMenu(); closeLlActionSheet(); closeAddToPlaylistSheet(); closePlActionSheet(); closeSignalPath(); }
 
 function llMarkAllUnplayed() {
   if (!listenLater.length) { closeLlActionSheet(); return; }
@@ -4754,6 +7849,62 @@ function llMarkAllUnplayed() {
   renderListenLaterCard();
   closeLlActionSheet();
   showToast('Marked all as unplayed', `${listenLater.length} item${listenLater.length === 1 ? '' : 's'}`);
+}
+
+// ── Listen Later — Phase 1 actions ──
+
+// Play All / Shuffle Play: build a mixed-folder queue from listenLater and
+// start playback. Closes the Listen Later screen so the player is visible.
+function llStartQueue(items, shuffleMode) {
+  if (!items.length) return;
+  const songs = items.map(r => r.fn);
+  originalQueue = songs;
+  currentQueue = shuffleMode ? shuffled(songs, 0) : [...songs];
+  shuffle = shuffleMode;
+  currentIdx = 0;
+  // currentFolder is set to the FIRST queued song's folder so art lookup works
+  const first = items.find(r => r.fn === currentQueue[0]) || items[0];
+  if (first) currentFolder = first.folderIdx;
+  closeListenLater();
+  playCurrent();
+}
+
+function llPlayAll() {
+  if (!listenLater.length) return;
+  llStartQueue(listenLater, false);
+  showToast('Playing Listen Later', `${listenLater.length} item${listenLater.length === 1 ? '' : 's'}`);
+}
+
+function llShufflePlay() {
+  if (!listenLater.length) return;
+  llStartQueue(listenLater, true);
+  showToast('Shuffling Listen Later', `${listenLater.length} item${listenLater.length === 1 ? '' : 's'}`);
+}
+
+// Remove all "played" items from Listen Later in one shot. Distinct from
+// "Clear all" — keeps the unplayed queue intact.
+function llRemoveAllPlayed() {
+  const playedCount = listenLater.filter(r => r.played).length;
+  if (!playedCount) {
+    closeLlActionSheet();
+    showToast('No played items', 'Nothing to remove');
+    return;
+  }
+  listenLater = listenLater.filter(r => !r.played);
+  saveListenLater();
+  renderLlList();
+  renderListenLaterCard();
+  closeLlActionSheet();
+  showToast('Removed played items', `${playedCount} item${playedCount === 1 ? '' : 's'} removed`);
+}
+
+// Disable / enable the banner action buttons based on whether there's anything
+// to play. Called from renderLlList so the UI stays in sync.
+function updateLlActionButtonsState() {
+  const row = document.getElementById('llActionsRow');
+  if (!row) return;
+  const empty = !listenLater.length;
+  row.querySelectorAll('.ll-action-btn').forEach(btn => { btn.disabled = empty; });
 }
 function llClearAll() {
   if (!listenLater.length) { closeLlActionSheet(); return; }
@@ -4781,6 +7932,11 @@ function showToast(title, sub) {
 // ── Listen Later full-screen ──
 
 function openListenLater() {
+  // Reset filter to "All" so the screen always opens with the full list
+  llFilter = 'all';
+  document.querySelectorAll('.ll-filter-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.filter === 'all');
+  });
   renderLlList();
   const screen = document.getElementById('listenLaterScreen');
   screen.classList.remove('cascade');
@@ -4793,15 +7949,41 @@ function closeListenLater() {
   screen.classList.remove('open');
   screen.classList.remove('cascade');
 }
+// Active filter for the Listen Later list. Resets to 'all' on screen open.
+let llFilter = 'all';
+function llSetFilter(filter) {
+  llFilter = filter;
+  document.querySelectorAll('.ll-filter-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.filter === filter);
+  });
+  renderLlList();
+  // Re-trigger cascade animation on filter switch
+  const screen = document.getElementById('listenLaterScreen');
+  if (screen) {
+    screen.classList.remove('cascade');
+    void screen.offsetWidth;
+    setTimeout(() => screen.classList.add('cascade'), 30);
+  }
+}
+
 function renderLlList() {
   const list = document.getElementById('llList');
   const count = document.getElementById('llCount');
   const collage = document.getElementById('llBannerCollage');
   if (!list || !count || !collage) return;
 
-  // Update count
+  // Update count + filter chip counts
   const n = listenLater.length;
+  const playedN   = listenLater.filter(r =>  r.played).length;
+  const unplayedN = n - playedN;
   count.textContent = `${n} item${n === 1 ? '' : 's'}`;
+  const elAll = document.getElementById('llFilterCountAll');
+  const elUn  = document.getElementById('llFilterCountUnplayed');
+  const elPl  = document.getElementById('llFilterCountPlayed');
+  if (elAll) elAll.textContent = n;
+  if (elUn)  elUn.textContent  = unplayedN;
+  if (elPl)  elPl.textContent  = playedN;
+  updateLlActionButtonsState();
 
   // Update banner 2x2 collage with first 4 items' art
   collage.innerHTML = [0, 1, 2, 3].map(i => {
@@ -4819,37 +8001,150 @@ function renderLlList() {
     list.innerHTML = `<div class="ll-empty">You're all caught up<br><span style="font-size:11px;opacity:.7">Go find more stuff to add to Listen Later.</span></div>`;
     return;
   }
-  list.innerHTML = listenLater.map((r, i) => {
+  // Build filtered view — but keep original indices so click/swipe handlers
+  // (which mutate `listenLater[i]`) still point at the right entry.
+  const filtered = listenLater.map((r, i) => ({ r, i })).filter(({ r }) => {
+    if (llFilter === 'unplayed') return !r.played;
+    if (llFilter === 'played')   return  r.played;
+    return true;
+  });
+  if (!filtered.length) {
+    const label = llFilter === 'unplayed' ? 'No unplayed items' : 'No played items';
+    list.innerHTML = `<div class="ll-empty">${label}<br><span style="font-size:11px;opacity:.7">Switch tabs to see the other side.</span></div>`;
+    return;
+  }
+  list.innerHTML = filtered.map(({ r, i }) => {
     const folder = playlist[r.folderIdx];
     const folderName = folder ? folder.folder : '';
     const folderIcon = folder ? folder.icon : '♫';
     const title = r.fn.replace(/\.(mp3|m4a|wav|ogg|flac|wmv)$/i, '');
     const cls = 'll-item' + (r.played ? ' played' : '');
-    return `<div class="${cls}" style="--idx:${i}" onclick="llPlayItem(${i})">
-      <div class="ll-item-art">
-        <img id="ll-img-${i}" alt="">
-        <span class="ll-item-art-fb">${folderIcon}</span>
-      </div>
-      <div class="ll-item-info">
-        <div class="ll-item-title">${esc(title)}</div>
-        <div class="ll-item-sub">${esc(folderName)}</div>
-      </div>
-      <button class="ll-item-play" onclick="event.stopPropagation();llPlayItem(${i})" aria-label="재생">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
-      </button>
-      <button class="ll-item-more" onclick="event.stopPropagation();llMoreClick(${i})" aria-label="더보기">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-          <circle cx="5" cy="12" r="1.7"/>
-          <circle cx="12" cy="12" r="1.7"/>
-          <circle cx="19" cy="12" r="1.7"/>
+    const added = relTime(r.addedAt);
+    const subText = added ? `${folderName} · ${added}` : folderName;
+    // Each item wraps its content in `.ll-swipe-content` so we can translateX it
+    // independently. The red "Delete" panel sits behind on the left, revealed as
+    // the content slides right.
+    return `<div class="ll-row" data-idx="${i}" style="--idx:${i}">
+      <div class="ll-delete-bg">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"/>
+          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+          <path d="M10 11v6"/><path d="M14 11v6"/>
         </svg>
-      </button>
+        <span class="ll-delete-text">Delete</span>
+      </div>
+      <div class="${cls} ll-swipe-content" onclick="llRowClick(event, ${i})">
+        <div class="ll-item-art">
+          <img id="ll-img-${i}" alt="">
+          <span class="ll-item-art-fb">${folderIcon}</span>
+        </div>
+        <div class="ll-item-info">
+          <div class="ll-item-title">${esc(title)}</div>
+          <div class="ll-item-sub">${esc(subText)}</div>
+        </div>
+        <button class="ll-item-more" onclick="event.stopPropagation();llMoreClick(${i})" aria-label="더보기">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="5" cy="12" r="1.7"/>
+            <circle cx="12" cy="12" r="1.7"/>
+            <circle cx="19" cy="12" r="1.7"/>
+          </svg>
+        </button>
+      </div>
     </div>`;
   }).join('');
   listenLater.forEach((r, i) => {
     const img = document.getElementById(`ll-img-${i}`);
     if (img) loadCardArt(r.fn, img);
   });
+  attachLlSwipeHandlers();
+}
+
+// Click handler that only fires if no swipe happened
+function llRowClick(ev, i) {
+  // If the row was dragged, ignore the click
+  const row = ev.currentTarget.parentElement;
+  if (row && row.dataset.swiped === '1') {
+    row.dataset.swiped = '';
+    return;
+  }
+  llPlayItem(i);
+}
+
+// Swipe-right-to-delete on Listen Later rows.
+// Drag right reveals a red Delete panel; drag past 60% of row width on release
+// → delete; otherwise snap back. Tracks both horizontal+vertical motion so a
+// near-vertical scroll doesn't trigger a swipe.
+function attachLlSwipeHandlers() {
+  const rows = document.querySelectorAll('#llList .ll-row');
+  rows.forEach(row => {
+    const content = row.querySelector('.ll-swipe-content');
+    if (!content) return;
+    let startX = 0, startY = 0, dx = 0, locked = false, active = false;
+    const onStart = (e) => {
+      const t = e.touches ? e.touches[0] : e;
+      startX = t.clientX; startY = t.clientY; dx = 0;
+      locked = false; active = true;
+      content.style.transition = 'none';
+    };
+    const onMove = (e) => {
+      if (!active) return;
+      const t = e.touches ? e.touches[0] : e;
+      const ddx = t.clientX - startX;
+      const ddy = t.clientY - startY;
+      if (!locked) {
+        // Decide gesture direction once movement crosses a small threshold
+        if (Math.abs(ddx) < 6 && Math.abs(ddy) < 6) return;
+        // Vertical-dominant motion ⇒ let the page scroll, give up
+        if (Math.abs(ddy) > Math.abs(ddx)) { active = false; return; }
+        locked = true;
+        // Reveal the red Delete panel only now that a horizontal swipe is committed
+        row.classList.add('swiping');
+      }
+      // Only allow right-direction swipe
+      dx = Math.max(0, ddx);
+      content.style.transform = `translateX(${dx}px)`;
+      if (e.cancelable) e.preventDefault();
+    };
+    const onEnd = () => {
+      if (!active) return;
+      active = false;
+      content.style.transition = 'transform .25s cubic-bezier(.4,0,.2,1)';
+      const width = row.getBoundingClientRect().width;
+      const threshold = width * 0.6;
+      if (dx > threshold) {
+        // Animate fully off then remove
+        content.style.transform = `translateX(${width}px)`;
+        row.dataset.swiped = '1';
+        setTimeout(() => {
+          const i = parseInt(row.dataset.idx, 10);
+          if (!isNaN(i)) llDeleteAt(i);
+        }, 220);
+      } else {
+        content.style.transform = '';
+        // Hide the red panel after the snap-back finishes
+        setTimeout(() => row.classList.remove('swiping'), 260);
+        // brief flag so an accidental click doesn't fire
+        if (dx > 6) {
+          row.dataset.swiped = '1';
+          setTimeout(() => { row.dataset.swiped = ''; }, 200);
+        }
+      }
+      dx = 0;
+    };
+    content.addEventListener('touchstart', onStart, { passive: true });
+    content.addEventListener('touchmove',  onMove,  { passive: false });
+    content.addEventListener('touchend',   onEnd);
+    content.addEventListener('touchcancel', onEnd);
+  });
+}
+
+function llDeleteAt(idx) {
+  const r = listenLater[idx];
+  if (!r) return;
+  listenLater.splice(idx, 1);
+  saveListenLater();
+  renderListenLaterCard();
+  renderLlList();
 }
 function llPlayItem(i) {
   const r = listenLater[i];
@@ -4899,6 +8194,8 @@ function switchTab(tabName, showFeed = true) {
   const llScreen = document.getElementById('listenLaterScreen');
   const libPlScreen = document.getElementById('libPlScreen');
   const plDetailScreen = document.getElementById('plDetailScreen');
+  const deviceScreen = document.getElementById('deviceScreen');
+  if (deviceScreen && deviceScreen.classList.contains('open')) deviceScreen.classList.remove('open');
   if (raScreen && raScreen.classList.contains('open')) {
     raScreen.classList.remove('open');
     raScreen.classList.remove('cascade');
@@ -4935,6 +8232,22 @@ function switchTab(tabName, showFeed = true) {
 
 // ── RECENT PLAYS ──
 let recentPlays = [];
+// Recently added entries — populates the home "Added" tab.
+// Each entry: { fn, folderIdx, source: 'll' | 'playlist', addedAt }
+let recentAdded = [];
+
+function addToRecentAdded(fn, folderIdx, source) {
+  // De-dup: if same fn already present, bump it to front with new timestamp
+  const i = recentAdded.findIndex(r => r.fn === fn);
+  if (i >= 0) recentAdded.splice(i, 1);
+  recentAdded.unshift({ fn, folderIdx, source, addedAt: Date.now() });
+  if (recentAdded.length > 100) recentAdded.pop();
+  try { localStorage.setItem('fg_recentAdded', JSON.stringify(recentAdded)); } catch(_) {}
+  const hv = document.getElementById('homeView');
+  if (hv && hv.style.display !== 'none' && getComputedStyle(hv).display !== 'none' && activityTab === 'added') {
+    renderActivityCards();
+  }
+}
 
 function addToRecent(fn, folderIdx) {
   // If already in list, keep its position — only re-render to update Now Playing indicator.
@@ -4942,7 +8255,7 @@ function addToRecent(fn, folderIdx) {
   const existing = recentPlays.findIndex(r => r.fn === fn);
   if (existing < 0) {
     recentPlays.unshift({ fn, folderIdx });
-    if (recentPlays.length > 30) recentPlays.pop();
+    if (recentPlays.length > 100) recentPlays.pop();
   }
   const hv = document.getElementById('homeView');
   if (hv && hv.style.display !== 'none' && getComputedStyle(hv).display !== 'none') {
@@ -5094,59 +8407,334 @@ function stPlayResult(fi, si, q) {
   switchTab('home');
 }
 
-// ── AUDIO CONTROL TOGGLES ──
-document.querySelectorAll('.toggle-sw').forEach(sw => {
-  sw.addEventListener('click', () => { sw.classList.toggle('on'); });
-});
+// ─────────────────────────────────────────────────────────────
+// ── MUSE: Audio engine + Effects + Presets + Device modal ──
+// ─────────────────────────────────────────────────────────────
 
-// ── BALANCE SLIDER ──
-(function() {
-  let balancePanner = null, balanceCtx = null;
+let museCtx = null;        // AudioContext
+let museSource = null;     // MediaElementSource
+let museEqFilters = [];    // BiquadFilters for Equalizer
+let museHpEqFilters = [];  // BiquadFilters for Headphone EQ
+let museCrossfeedNodes = null;
+let museCompressor = null; // DynamicsCompressor for Volume Leveling
+window.museMasterGain = null; // Master gain at the end of the chain — software volume control
+let museBypassEq = null, museBypassHpEq = null, museBypassCf = null, museBypassVl = null;
 
-  function initBalanceCtx() {
-    if (balanceCtx) return;
+// User-controlled effect state
+let museEffects = {
+  eq: false,
+  headphoneEq: false,
+  crossfeed: false,
+  volumeLeveling: false,
+  balance: 0,
+  eqGains: [0, 0, 0, 0, 0]  // 5 bands: 60, 230, 910, 3.6k, 14k Hz
+};
+
+function loadMuseEffects() {
+  try {
+    const v = localStorage.getItem('fg_muse');
+    if (v) Object.assign(museEffects, JSON.parse(v));
+  } catch(e) {}
+}
+function saveMuseEffects() {
+  try { localStorage.setItem('fg_muse', JSON.stringify(museEffects)); } catch(e) {}
+}
+
+// Build the audio processing graph (lazy, on first user gesture)
+function initMuseAudio() {
+  if (museCtx) {
+    if (museCtx.state === 'suspended') { try { museCtx.resume(); } catch(_){} }
+    return true;
+  }
+  try {
+    const Ctor = window.AudioContext || window.webkitAudioContext;
+    if (!Ctor) { console.warn('MUSE: AudioContext not supported'); return false; }
+    museCtx = new Ctor();
+    if (museCtx.state === 'suspended') { try { museCtx.resume(); } catch(_){} }
     try {
-      balanceCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const src = balanceCtx.createMediaElementSource(audio);
-      balancePanner = balanceCtx.createStereoPanner();
-      src.connect(balancePanner);
-      balancePanner.connect(balanceCtx.destination);
-    } catch(e) {}
-  }
-
-  function applyBalance(val) {
-    val = Math.round(Math.max(-100, Math.min(100, val)));
-    const pct = (val + 100) / 200;
-    const thumb = document.getElementById('balanceThumb');
-    const fill  = document.getElementById('balanceFill');
-    const valEl = document.getElementById('balanceVal');
-    if (thumb) thumb.style.left = (pct * 100) + '%';
-    if (fill) {
-      if (val === 0)       { fill.style.left = '50%'; fill.style.width = '0%'; }
-      else if (val < 0)    { fill.style.left  = (pct * 100) + '%'; fill.style.width = (50 - pct * 100) + '%'; }
-      else                 { fill.style.left  = '50%';              fill.style.width = (pct * 100 - 50) + '%'; }
+      museSource = museCtx.createMediaElementSource(audio);
+    } catch(srcErr) {
+      if (window._museExistingSource) {
+        museSource = window._museExistingSource;
+      } else {
+        console.error('MUSE: createMediaElementSource failed', srcErr);
+        museCtx = null;
+        return false;
+      }
     }
-    if (valEl) valEl.textContent = val === 0 ? 'C' : (val < 0 ? 'L' + Math.abs(val) : 'R' + val);
-    if (balancePanner) balancePanner.pan.value = val / 100;
+    window._museExistingSource = museSource;
+
+    // ── Equalizer: 5-band peaking filters ──
+    const eqFreqs = [60, 230, 910, 3600, 14000];
+    museEqFilters = eqFreqs.map((f, i) => {
+      const flt = museCtx.createBiquadFilter();
+      flt.type = 'peaking';
+      flt.frequency.value = f;
+      flt.Q.value = 1.0;
+      flt.gain.value = museEffects.eqGains[i] || 0;
+      return flt;
+    });
+
+    // ── Headphone EQ: gentle treble lift + sub-bass cut ──
+    museHpEqFilters = [
+      (() => { const f = museCtx.createBiquadFilter(); f.type = 'highshelf'; f.frequency.value = 8000; f.gain.value = 3; return f; })(),
+      (() => { const f = museCtx.createBiquadFilter(); f.type = 'lowshelf'; f.frequency.value = 100; f.gain.value = -2; return f; })()
+    ];
+
+    // ── Crossfeed: stereo→binaural via channel splitter/delay/gain ──
+    // Standard Bauer crossfeed: small delay + ~6dB cross-channel mix below 700Hz
+    const splitter = museCtx.createChannelSplitter(2);
+    const merger = museCtx.createChannelMerger(2);
+    const leftDirect = museCtx.createGain();
+    const rightDirect = museCtx.createGain();
+    const leftToRight = museCtx.createGain();  leftToRight.gain.value = 0.45;
+    const rightToLeft = museCtx.createGain();  rightToLeft.gain.value = 0.45;
+    const delayL = museCtx.createDelay(0.01); delayL.delayTime.value = 0.0003;
+    const delayR = museCtx.createDelay(0.01); delayR.delayTime.value = 0.0003;
+    const lpL = museCtx.createBiquadFilter(); lpL.type = 'lowpass'; lpL.frequency.value = 700;
+    const lpR = museCtx.createBiquadFilter(); lpR.type = 'lowpass'; lpR.frequency.value = 700;
+    museCrossfeedNodes = { splitter, merger, leftDirect, rightDirect, leftToRight, rightToLeft, delayL, delayR, lpL, lpR };
+
+    // ── Volume Leveling: gentle compressor ──
+    museCompressor = museCtx.createDynamicsCompressor();
+    museCompressor.threshold.value = -22;
+    museCompressor.knee.value = 24;
+    museCompressor.ratio.value = 4;
+    museCompressor.attack.value = 0.005;
+    museCompressor.release.value = 0.18;
+
+    // Balance panner stays at end
+    window.musePanner = museCtx.createStereoPanner();
+    window.musePanner.pan.value = museEffects.balance / 100;
+
+    // Master gain at the end — software volume control for the whole app
+    window.museMasterGain = museCtx.createGain();
+    const initialVol = (typeof osVolume === 'number') ? osVolume : 1;
+    window.museMasterGain.gain.value = initialVol;
+
+    rebuildMuseGraph();
+    return true;
+  } catch(e) { console.error('MUSE audio init failed:', e); return false; }
+}
+
+// Resume AudioContext when app returns to foreground (iOS suspends it on lock).
+// Only resumes if engine is ALREADY active — never auto-creates it.
+function museTryResume() {
+  if (museCtx && museCtx.state === 'suspended') { try { museCtx.resume(); } catch(_){} }
+}
+audio.addEventListener('play', museTryResume);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) museTryResume(); });
+window.addEventListener('focus', museTryResume);
+
+// Helper: do any MUSE effects need Web Audio?
+function shouldUseAudioEngine() {
+  return museEffects.eq || museEffects.headphoneEq || museEffects.crossfeed || museEffects.volumeLeveling
+    || Math.abs(museEffects.balance || 0) > 0.5;
+}
+
+// Wire (or rewire) the graph based on which effects are enabled
+function rebuildMuseGraph() {
+  if (!museCtx || !museSource) return;
+  // Disconnect everything
+  try { museSource.disconnect(); } catch(_){}
+  museEqFilters.forEach(f => { try { f.disconnect(); } catch(_){} });
+  museHpEqFilters.forEach(f => { try { f.disconnect(); } catch(_){} });
+  if (museCrossfeedNodes) {
+    Object.values(museCrossfeedNodes).forEach(n => { try { n.disconnect(); } catch(_){} });
   }
+  if (museCompressor) try { museCompressor.disconnect(); } catch(_){}
+  if (window.musePanner) try { window.musePanner.disconnect(); } catch(_){}
+  if (window.museMasterGain) try { window.museMasterGain.disconnect(); } catch(_){}
 
-  applyBalance(0);
+  let node = museSource;
 
-  const wrap = document.getElementById('balanceTrackWrap');
-  if (!wrap) return;
-
-  function balanceFromEvent(e) {
-    const rect = wrap.getBoundingClientRect();
-    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-    return (x / rect.width) * 200 - 100;
+  if (museEffects.eq) {
+    for (const flt of museEqFilters) { node.connect(flt); node = flt; }
   }
+  if (museEffects.headphoneEq) {
+    for (const flt of museHpEqFilters) { node.connect(flt); node = flt; }
+  }
+  if (museEffects.crossfeed && museCrossfeedNodes) {
+    const { splitter, merger, leftDirect, rightDirect, leftToRight, rightToLeft, delayL, delayR, lpL, lpR } = museCrossfeedNodes;
+    node.connect(splitter);
+    // L direct
+    splitter.connect(leftDirect, 0); leftDirect.connect(merger, 0, 0);
+    // R direct
+    splitter.connect(rightDirect, 1); rightDirect.connect(merger, 0, 1);
+    // L → R (filtered + delayed)
+    splitter.connect(lpL, 0); lpL.connect(delayL); delayL.connect(leftToRight); leftToRight.connect(merger, 0, 1);
+    // R → L
+    splitter.connect(lpR, 1); lpR.connect(delayR); delayR.connect(rightToLeft); rightToLeft.connect(merger, 0, 0);
+    node = merger;
+  }
+  if (museEffects.volumeLeveling && museCompressor) {
+    node.connect(museCompressor); node = museCompressor;
+  }
+  if (window.musePanner) {
+    node.connect(window.musePanner); node = window.musePanner;
+  }
+  // Always end through master gain → destination so software volume works
+  // even with zero effects enabled.
+  if (window.museMasterGain) {
+    node.connect(window.museMasterGain);
+    window.museMasterGain.connect(museCtx.destination);
+  } else {
+    node.connect(museCtx.destination);
+  }
+}
 
-  let dragging = false;
-  wrap.addEventListener('click',      e => { initBalanceCtx(); applyBalance(balanceFromEvent(e)); });
-  wrap.addEventListener('touchstart', () => { dragging = true; initBalanceCtx(); }, { passive: true });
-  wrap.addEventListener('touchmove',  e => { if (dragging) applyBalance(balanceFromEvent(e)); }, { passive: true });
-  wrap.addEventListener('touchend',   () => { dragging = false; });
-})();
+// ── Card toggles ──
+const EFFECT_LABELS = {
+  eq: 'Equalizer',
+  headphoneEq: 'Headphone EQ',
+  crossfeed: 'Crossfeed',
+  volumeLeveling: 'Volume leveling'
+};
+function toggleEffect(key) {
+  // 1. Update visual state FIRST — never block on audio
+  museEffects[key] = !museEffects[key];
+  saveMuseEffects();
+  syncMuseCardUI();
+  const newState = museEffects[key] ? 'ON' : 'OFF';
+  // 2. Only init Web Audio when an effect is being turned ON.
+  //    This preserves the default iOS audio path (lock-screen friendly)
+  //    until the user explicitly chooses to use an effect.
+  let audioOk = false;
+  try {
+    if (museEffects[key]) {
+      // Turning ON → ensure engine exists, then route through filters
+      audioOk = initMuseAudio();
+      if (audioOk && museCtx) rebuildMuseGraph();
+    } else if (museCtx) {
+      // Turning OFF and engine exists → just rebuild without this filter
+      rebuildMuseGraph();
+      audioOk = true;
+    } else {
+      // Turning OFF, no engine — pure UI state change
+      audioOk = false;
+    }
+  } catch(e) { console.error('MUSE toggle audio error:', e); }
+  showToast(`${EFFECT_LABELS[key] || key}: ${newState}`,
+    museCtx ? 'Audio engine active' : 'iOS native audio (no chain)');
+}
+function syncMuseCardUI() {
+  const map = { eq: 'museCardEq', headphoneEq: 'museCardHpEq', crossfeed: 'museCardCrossfeed', volumeLeveling: 'museCardVolLevel' };
+  Object.entries(map).forEach(([key, id]) => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('active', !!museEffects[key]);
+  });
+}
+
+// ── Presets ──
+let musePresets = [];
+function loadMusePresets() {
+  try { const v = localStorage.getItem('fg_musePresets'); if (v) musePresets = JSON.parse(v); } catch(e) {}
+}
+function saveMusePresets() {
+  try { localStorage.setItem('fg_musePresets', JSON.stringify(musePresets)); } catch(e) {}
+}
+function renderMusePresets() {
+  const row = document.getElementById('musePresetsRow');
+  if (!row) return;
+  const isEditing = row.classList.contains('editing');
+
+  // Default "iPhone" preset is always shown after the + add button
+  const baseHTML = `
+    <button class="muse-preset add" onclick="createNewPreset()">
+      <div class="muse-preset-circle">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </div>
+      <span class="muse-preset-label">New preset</span>
+    </button>
+  `;
+  // iPhone default is the "current device" preset (always present, not deletable)
+  const defaultHTML = `
+    <button class="muse-preset active" onclick="applyPreset('__device__')">
+      <div class="muse-preset-circle">
+        <svg width="20" height="24" viewBox="0 0 24 28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="24" rx="2.5"/><line x1="11" y1="22" x2="13" y2="22"/></svg>
+      </div>
+      <span class="muse-preset-label">iPhone</span>
+    </button>
+  `;
+  const customsHTML = musePresets.map(p => `
+    <button class="muse-preset" onclick="applyPreset('${p.id}')">
+      <div class="muse-preset-circle">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg>
+      </div>
+      <span class="muse-preset-label">${esc(p.name)}</span>
+      <button class="muse-preset-delete" onclick="event.stopPropagation();deletePreset('${p.id}')" aria-label="삭제">×</button>
+    </button>
+  `).join('');
+  row.innerHTML = baseHTML + defaultHTML + customsHTML;
+}
+function toggleMuseEdit() {
+  const row = document.getElementById('musePresetsRow');
+  const btn = document.getElementById('museEditBtn');
+  if (!row || !btn) return;
+  row.classList.toggle('editing');
+  const editing = row.classList.contains('editing');
+  btn.classList.toggle('editing', editing);
+  btn.textContent = editing ? 'DONE' : 'EDIT';
+  renderMusePresets();
+  if (editing) row.classList.add('editing');
+}
+function createNewPreset() {
+  const name = prompt('Preset name', 'My Preset');
+  if (!name || !name.trim()) return;
+  const p = {
+    id: 'p_' + Date.now().toString(36),
+    name: name.trim(),
+    settings: { ...museEffects, eqGains: [...museEffects.eqGains] }
+  };
+  musePresets.unshift(p);
+  saveMusePresets();
+  renderMusePresets();
+  showToast('Preset created', p.name);
+}
+function deletePreset(id) {
+  musePresets = musePresets.filter(p => p.id !== id);
+  saveMusePresets();
+  renderMusePresets();
+}
+function applyPreset(id) {
+  if (id === '__device__') {
+    // Reset to neutral
+    museEffects = { eq: false, headphoneEq: false, crossfeed: false, volumeLeveling: false, balance: 0, eqGains: [0,0,0,0,0] };
+  } else {
+    const p = musePresets.find(x => x.id === id);
+    if (!p) return;
+    museEffects = { ...museEffects, ...p.settings };
+  }
+  saveMuseEffects();
+  initMuseAudio();
+  // Apply EQ gains to filters
+  if (museEqFilters.length) museEqFilters.forEach((f, i) => f.gain.value = museEffects.eqGains[i] || 0);
+  if (window.musePanner) window.musePanner.pan.value = museEffects.balance / 100;
+  rebuildMuseGraph();
+  syncMuseCardUI();
+}
+
+// ── Device modal ──
+function openDeviceModal() {
+  // Show real sample rate
+  initMuseAudio();
+  const sr = museCtx ? Math.round(museCtx.sampleRate / 1000) : 48;
+  const el = document.getElementById('deviceSampleRate');
+  if (el) el.textContent = sr + ' kHz';
+  document.getElementById('deviceScreen').classList.add('open');
+}
+function closeDeviceModal() {
+  document.getElementById('deviceScreen').classList.remove('open');
+}
+
+// ── Init MUSE on app load ──
+loadMuseEffects();
+loadMusePresets();
+renderMusePresets();
+syncMuseCardUI();
+// IMPORTANT: do NOT initialize Web Audio at load. Audio routes through iOS
+// native path until the user explicitly enables an effect — this preserves
+// the lock-screen background playback behavior.
 </script>
 </body>
 </html>
