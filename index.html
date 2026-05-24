@@ -4821,17 +4821,40 @@ function renderSongList(folder) {
 }
 
 // ── Artist hero background loader ─────────────────────────────────────
-// We collect ALL candidate images per artist (TheAudioDB returns up to 6:
-// strArtistThumb + strArtistFanart{1..4} + strArtistLogo). On every render
-// we pick a different one at random so the hero shows variety across app
-// launches (and even across navigations within one session).
+// We collect ALL candidate images per artist and merge two sources:
+//   • Local files in artist-thumbs/ — slot 1 is <folder>.<ext>, additional
+//     images are <folder>-2.<ext>, <folder>-3.<ext>, ... Allowed extensions
+//     are jpg / jpeg / png / webp. Scanning stops at the first empty slot.
+//   • TheAudioDB returns up to 6 (strArtistThumb + strArtistFanart{1..4}
+//     + strArtistLogo).
+// Local images come first in the pool, then remote. pickArtistImage picks
+// one at random per render so the hero varies across launches.
+// Cache key is versioned (v2) so old single-image caches are invalidated.
 const artistImgMem = new Map(); // folderName → string[] | null
+const ARTIST_THUMB_EXTS = ['jpg', 'jpeg', 'png', 'webp'];
+const ARTIST_THUMB_MAX_SLOTS = 15;
+
+async function findLocalArtistImages(folderName) {
+  const base = 'artist-thumbs/' + encodeURIComponent(folderName);
+  const found = [];
+  for (let i = 1; i <= ARTIST_THUMB_MAX_SLOTS; i++) {
+    const suffix = i === 1 ? '' : `-${i}`;
+    const hits = await Promise.all(ARTIST_THUMB_EXTS.map(ext => {
+      const p = `${base}${suffix}.${ext}`;
+      return fetch(p, { method: 'HEAD' }).then(r => r.ok ? p : null).catch(() => null);
+    }));
+    const first = hits.find(Boolean);
+    if (!first) break; // Empty slot — stop scanning higher numbers
+    found.push(first);
+  }
+  return found;
+}
 
 async function loadArtistImages(folderName) {
   if (artistImgMem.has(folderName)) return artistImgMem.get(folderName);
   // localStorage cache (array of URLs, or sentinel 'none')
   try {
-    const cached = localStorage.getItem('fg_artist_imgs_' + folderName);
+    const cached = localStorage.getItem('fg_artist_imgs_v2_' + folderName);
     if (cached) {
       const v = cached === 'none' ? null : JSON.parse(cached);
       artistImgMem.set(folderName, v);
@@ -4839,20 +4862,12 @@ async function loadArtistImages(folderName) {
     }
   } catch(_) {}
 
-  // User-supplied local file always wins — best quality control
-  try {
-    const localPath = 'artist-thumbs/' + encodeURIComponent(folderName) + '.jpg';
-    const head = await fetch(localPath, { method: 'HEAD' });
-    if (head.ok) {
-      const arr = [localPath];
-      artistImgMem.set(folderName, arr);
-      try { localStorage.setItem('fg_artist_imgs_' + folderName, JSON.stringify(arr)); } catch(_) {}
-      return arr;
-    }
-  } catch(_) {}
+  // 1) User-supplied local images
+  const localImgs = await findLocalArtistImages(folderName);
 
-  // TheAudioDB query. Strip bracketed prefixes/suffixes so queries like
+  // 2) TheAudioDB query. Strip bracketed prefixes/suffixes so queries like
   // "[B] Beatles" or "시와 (소요)" become "Beatles" / "시와".
+  let remoteImgs = [];
   const q = folderName.replace(/\[[^\]]*\]/g, '').replace(/\([^)]*\)/g, '').trim();
   if (q && q !== 'Jazz' && q !== '기타') {
     try {
@@ -4862,9 +4877,7 @@ async function loadArtistImages(folderName) {
         const data = await res.json();
         const a = data && data.artists && data.artists[0];
         if (a) {
-          // Collect every non-empty image field; preferred order favours
-          // photos that include the artist's face.
-          const candidates = [
+          remoteImgs = [
             a.strArtistThumb,
             a.strArtistFanart,
             a.strArtistFanart2,
@@ -4872,18 +4885,20 @@ async function loadArtistImages(folderName) {
             a.strArtistFanart4,
             a.strArtistLogo,
           ].filter(u => typeof u === 'string' && u.length > 8);
-          if (candidates.length) {
-            artistImgMem.set(folderName, candidates);
-            try { localStorage.setItem('fg_artist_imgs_' + folderName, JSON.stringify(candidates)); } catch(_) {}
-            return candidates;
-          }
         }
       }
     } catch(_) {}
   }
 
+  const all = [...localImgs, ...remoteImgs];
+  if (all.length) {
+    artistImgMem.set(folderName, all);
+    try { localStorage.setItem('fg_artist_imgs_v2_' + folderName, JSON.stringify(all)); } catch(_) {}
+    return all;
+  }
+
   artistImgMem.set(folderName, null);
-  try { localStorage.setItem('fg_artist_imgs_' + folderName, 'none'); } catch(_) {}
+  try { localStorage.setItem('fg_artist_imgs_v2_' + folderName, 'none'); } catch(_) {}
   return null;
 }
 
