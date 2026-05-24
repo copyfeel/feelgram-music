@@ -4627,6 +4627,24 @@ let playlist = [], currentFolder = null, currentQueue = [], originalQueue = [], 
 let shuffle = false, repeat = 'none', currentHsl = null;
 const artCache = new Map(); // fn → data URL (stable, never revoked)
 
+// Stored records (favorites / recent / listenLater) carry a folderIdx hint
+// from the moment they were saved. When playlist.json is regenerated those
+// indices shift, so resolve back to the live index using the filename — the
+// only stable identifier across regenerations.
+function lookupFolderIdxByFn(fn) {
+  if (!fn) return -1;
+  for (let i = 0; i < playlist.length; i++) {
+    if (playlist[i].songs.includes(fn)) return i;
+  }
+  return -1;
+}
+function resolveFolderIdx(r) {
+  if (!r) return -1;
+  const i = r.folderIdx;
+  if (i != null && playlist[i] && playlist[i].songs.includes(r.fn)) return i;
+  return lookupFolderIdxByFn(r.fn);
+}
+
 function setThemeColor(hsl) {
   const meta = document.querySelector('meta[name="theme-color"]');
   if (!meta) return;
@@ -6648,6 +6666,11 @@ function restoreState() {
     // UI 복원
     if (currentIdx >= 0 && currentQueue.length > 0) {
       const fn = currentQueue[currentIdx];
+      // Restored currentFolder may point to a shifted slot after a
+      // playlist regeneration. Re-resolve from the song filename.
+      const fi = lookupFolderIdxByFn(fn);
+      if (fi >= 0) currentFolder = fi;
+      else if (currentFolder !== null && !playlist[currentFolder]) currentFolder = null;
       const title = fn.replace(/\.(mp3|m4a|wav|ogg|flac|wmv)$/i, '');
       const folderName = (currentFolder !== null && playlist[currentFolder]) ? playlist[currentFolder].folder : '';
       document.getElementById('mpTitle').textContent  = title;
@@ -6711,8 +6734,9 @@ function renderActivityCards() {
   const isPaused = audio.paused;
   container.innerHTML = data.map((r, i) => {
     const title  = r.fn.replace(/\.(mp3|m4a|wav|ogg|flac|wmv)$/i, '');
-    const folder = (r.folderIdx !== null && playlist[r.folderIdx]) ? playlist[r.folderIdx].folder : '';
-    const icon   = (r.folderIdx !== null && playlist[r.folderIdx]) ? playlist[r.folderIdx].icon   : '♫';
+    const fi     = resolveFolderIdx(r);
+    const folder = playlist[fi] ? playlist[fi].folder : '';
+    const icon   = playlist[fi] ? playlist[fi].icon   : '♫';
     const playing = (r.fn === playingFn);
     const cls = 'ha-card' + (playing ? ' now-playing' : '') + (playing && isPaused ? ' audio-paused' : '');
     const inLL = isInListenLater(r.fn);
@@ -6750,8 +6774,8 @@ function playActivityCard(i) {
   const arr = activityTab === 'played' ? recentPlays : recentAdded;
   const r = arr[i];
   if (!r) return;
-  const fi = r.folderIdx;
-  if (fi === null || !playlist[fi]) return;
+  const fi = resolveFolderIdx(r);
+  if (fi < 0 || !playlist[fi]) return;
   const si = playlist[fi].songs.indexOf(r.fn);
   if (si < 0) return;
   selectFolder(fi);
@@ -6922,7 +6946,7 @@ function renderRaList() {
     return;
   }
   list.innerHTML = data.map((r, i) => {
-    const folder = playlist[r.folderIdx];
+    const folder = playlist[resolveFolderIdx(r)];
     const folderName = folder ? folder.folder : '';
     const folderIcon = folder ? folder.icon : '♫';
     const title = r.fn.replace(/\.(mp3|m4a|wav|ogg|flac|wmv)$/i, '');
@@ -7059,14 +7083,14 @@ function attachRaSwipeHandlers() {
 function raMoreClick(i) {
   const arr = raCurrentTab === 'played' ? recentPlays : recentAdded;
   const r = arr[i];
-  if (r) openSongMenu(r.fn, r.folderIdx, { recentActivity: true });
+  if (r) openSongMenu(r.fn, resolveFolderIdx(r), { recentActivity: true });
 }
 function raPlayItem(i) {
   const arr = raCurrentTab === 'played' ? recentPlays : recentAdded;
   const r = arr[i];
   if (!r) return;
-  const fi = r.folderIdx;
-  if (fi === null || !playlist[fi]) return;
+  const fi = resolveFolderIdx(r);
+  if (fi < 0 || !playlist[fi]) return;
   const si = playlist[fi].songs.indexOf(r.fn);
   if (si < 0) return;
   selectFolder(fi);
@@ -7122,7 +7146,7 @@ function renderListenLaterCard() {
     return;
   }
   c.innerHTML = listenLater.slice(0, 3).map((r, i) => {
-    const folder = playlist[r.folderIdx];
+    const folder = playlist[resolveFolderIdx(r)];
     const folderName = folder ? folder.folder : '';
     const folderIcon = folder ? folder.icon : '♫';
     const title = r.fn.replace(/\.(mp3|m4a|wav|ogg|flac|wmv)$/i, '');
@@ -7150,8 +7174,8 @@ function renderListenLaterCard() {
 function llCardPlay(i) {
   const r = listenLater[i];
   if (!r) return;
-  const fi = r.folderIdx;
-  if (fi === null || !playlist[fi]) return;
+  const fi = resolveFolderIdx(r);
+  if (fi < 0 || !playlist[fi]) return;
   const si = playlist[fi].songs.indexOf(r.fn);
   if (si < 0) return;
   selectFolder(fi);
@@ -7711,7 +7735,7 @@ function playPlaylistFrom(pl, idx, shuffleMode) {
   currentIdx = shuffleMode ? 0 : idx;
   // Update currentFolder to the first song's folder (for now)
   const firstSong = pl.songs[shuffleMode ? songs.indexOf(currentQueue[0]) : idx];
-  if (firstSong) currentFolder = firstSong.folderIdx;
+  if (firstSong) currentFolder = resolveFolderIdx(firstSong);
   playCurrent();
 }
 
@@ -7751,7 +7775,7 @@ function updatePlDetailView(p) {
     return;
   }
   list.innerHTML = p.songs.map((r, i) => {
-    const folder = playlist[r.folderIdx];
+    const folder = playlist[resolveFolderIdx(r)];
     const folderName = folder ? folder.folder : '';
     const folderIcon = folder ? folder.icon : '♫';
     const title = r.fn.replace(/\.(mp3|m4a|wav|ogg|flac|wmv)$/i, '');
@@ -7803,7 +7827,7 @@ function plDetailSongMore(idx) {
   const p = playlists2.find(x => x.id === currentPlDetailId);
   if (!p) return;
   const r = p.songs[idx];
-  if (r) openSongMenu(r.fn, r.folderIdx, { playlistId: p.id, songIdx: idx });
+  if (r) openSongMenu(r.fn, resolveFolderIdx(r), { playlistId: p.id, songIdx: idx });
 }
 
 // ── Drag-to-reorder in playlist detail ──
@@ -8055,7 +8079,7 @@ function renderLlList() {
     return;
   }
   list.innerHTML = filtered.map(({ r, i }) => {
-    const folder = playlist[r.folderIdx];
+    const folder = playlist[resolveFolderIdx(r)];
     const folderName = folder ? folder.folder : '';
     const folderIcon = folder ? folder.icon : '♫';
     const title = r.fn.replace(/\.(mp3|m4a|wav|ogg|flac|wmv)$/i, '');
@@ -8190,8 +8214,8 @@ function llDeleteAt(idx) {
 function llPlayItem(i) {
   const r = listenLater[i];
   if (!r) return;
-  const fi = r.folderIdx;
-  if (fi === null || !playlist[fi]) return;
+  const fi = resolveFolderIdx(r);
+  if (fi < 0 || !playlist[fi]) return;
   const si = playlist[fi].songs.indexOf(r.fn);
   if (si < 0) return;
   selectFolder(fi);
@@ -8199,7 +8223,7 @@ function llPlayItem(i) {
 }
 function llMoreClick(i) {
   const r = listenLater[i];
-  if (r) openSongMenu(r.fn, r.folderIdx);
+  if (r) openSongMenu(r.fn, resolveFolderIdx(r));
 }
 
 async function loadCardArt(fn, imgEl) {
@@ -8307,8 +8331,8 @@ function addToRecent(fn, folderIdx) {
 function playRecentItem(idx) {
   const r = recentPlays[idx];
   if (!r) return;
-  const fi = r.folderIdx;
-  if (fi === null || !playlist[fi]) return;
+  const fi = resolveFolderIdx(r);
+  if (fi < 0 || !playlist[fi]) return;
   const si = playlist[fi].songs.indexOf(r.fn);
   if (si < 0) return;
   selectFolder(fi);
