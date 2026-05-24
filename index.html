@@ -4830,20 +4830,27 @@ function renderSongList(folder) {
 // Local images come first in the pool, then remote. pickArtistImage picks
 // one at random per render so the hero varies across launches.
 // Cache key is versioned (v3) so old single-image caches are invalidated.
+// On cache hit we still probe the next would-be local slot — so newly
+// added artist-thumbs/ files are picked up without bumping the version.
 const artistImgMem = new Map(); // folderName → string[] | null
 const ARTIST_THUMB_EXTS = ['jpg', 'jpeg', 'png', 'webp'];
 const ARTIST_THUMB_MAX_SLOTS = 15;
+const ARTIST_CACHE_KEY = 'fg_artist_imgs_v3_';
 
-async function findLocalArtistImages(folderName) {
+async function probeLocalArtistSlot(folderName, slot) {
   const base = 'artist-thumbs/' + encodeURIComponent(folderName);
-  const found = [];
-  for (let i = 1; i <= ARTIST_THUMB_MAX_SLOTS; i++) {
-    const suffix = i === 1 ? '' : `-${i}`;
-    const hits = await Promise.all(ARTIST_THUMB_EXTS.map(ext => {
-      const p = `${base}${suffix}.${ext}`;
-      return fetch(p, { method: 'HEAD' }).then(r => r.ok ? p : null).catch(() => null);
-    }));
-    const first = hits.find(Boolean);
+  const suffix = slot === 1 ? '' : `-${slot}`;
+  const hits = await Promise.all(ARTIST_THUMB_EXTS.map(ext => {
+    const p = `${base}${suffix}.${ext}`;
+    return fetch(p, { method: 'HEAD' }).then(r => r.ok ? p : null).catch(() => null);
+  }));
+  return hits.find(Boolean) || null;
+}
+
+async function findLocalArtistImages(folderName, startSlot = 1, prefix = []) {
+  const found = [...prefix];
+  for (let i = startSlot; i <= ARTIST_THUMB_MAX_SLOTS; i++) {
+    const first = await probeLocalArtistSlot(folderName, i);
     if (!first) break; // Empty slot — stop scanning higher numbers
     found.push(first);
   }
@@ -4852,17 +4859,35 @@ async function findLocalArtistImages(folderName) {
 
 async function loadArtistImages(folderName) {
   if (artistImgMem.has(folderName)) return artistImgMem.get(folderName);
-  // localStorage cache (array of URLs, or sentinel 'none')
+
+  // Load existing cache (may be array, null, or undefined for "no cache").
+  let cached;
   try {
-    const cached = localStorage.getItem('fg_artist_imgs_v3_' + folderName);
-    if (cached) {
-      const v = cached === 'none' ? null : JSON.parse(cached);
-      artistImgMem.set(folderName, v);
-      return v;
-    }
+    const raw = localStorage.getItem(ARTIST_CACHE_KEY + folderName);
+    if (raw != null) cached = raw === 'none' ? null : JSON.parse(raw);
   } catch(_) {}
 
-  // 1) User-supplied local images
+  if (cached !== undefined) {
+    // Sanity-check: probe the next would-be local slot. If nothing new,
+    // trust the cache. If a new local file appeared, rescan and refresh.
+    const cachedLocals = (cached || []).filter(u => typeof u === 'string' && u.startsWith('artist-thumbs/'));
+    const nextSlot = cachedLocals.length + 1;
+    const probe = await probeLocalArtistSlot(folderName, nextSlot);
+    if (!probe) {
+      artistImgMem.set(folderName, cached);
+      return cached;
+    }
+    // New local image present — continue scanning from the probed slot,
+    // preserving any non-local (remote) URLs from the old cache.
+    const cachedRemotes = (cached || []).filter(u => typeof u === 'string' && !u.startsWith('artist-thumbs/'));
+    const localImgs = await findLocalArtistImages(folderName, nextSlot + 1, [...cachedLocals, probe]);
+    const all = [...localImgs, ...cachedRemotes];
+    artistImgMem.set(folderName, all);
+    try { localStorage.setItem(ARTIST_CACHE_KEY + folderName, JSON.stringify(all)); } catch(_) {}
+    return all;
+  }
+
+  // 1) User-supplied local images (no prior cache — full scan)
   const localImgs = await findLocalArtistImages(folderName);
 
   // 2) TheAudioDB query. Strip bracketed prefixes/suffixes so queries like
@@ -4893,12 +4918,12 @@ async function loadArtistImages(folderName) {
   const all = [...localImgs, ...remoteImgs];
   if (all.length) {
     artistImgMem.set(folderName, all);
-    try { localStorage.setItem('fg_artist_imgs_v3_' + folderName, JSON.stringify(all)); } catch(_) {}
+    try { localStorage.setItem(ARTIST_CACHE_KEY + folderName, JSON.stringify(all)); } catch(_) {}
     return all;
   }
 
   artistImgMem.set(folderName, null);
-  try { localStorage.setItem('fg_artist_imgs_v3_' + folderName, 'none'); } catch(_) {}
+  try { localStorage.setItem(ARTIST_CACHE_KEY + folderName, 'none'); } catch(_) {}
   return null;
 }
 
