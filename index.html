@@ -4829,7 +4829,7 @@ function renderSongList(folder) {
 //     + strArtistLogo).
 // Local images come first in the pool, then remote. pickArtistImage picks
 // one at random per render so the hero varies across launches.
-// Cache key is versioned (v2) so old single-image caches are invalidated.
+// Cache key is versioned (v3) so old single-image caches are invalidated.
 const artistImgMem = new Map(); // folderName → string[] | null
 const ARTIST_THUMB_EXTS = ['jpg', 'jpeg', 'png', 'webp'];
 const ARTIST_THUMB_MAX_SLOTS = 15;
@@ -4854,7 +4854,7 @@ async function loadArtistImages(folderName) {
   if (artistImgMem.has(folderName)) return artistImgMem.get(folderName);
   // localStorage cache (array of URLs, or sentinel 'none')
   try {
-    const cached = localStorage.getItem('fg_artist_imgs_v2_' + folderName);
+    const cached = localStorage.getItem('fg_artist_imgs_v3_' + folderName);
     if (cached) {
       const v = cached === 'none' ? null : JSON.parse(cached);
       artistImgMem.set(folderName, v);
@@ -4893,12 +4893,12 @@ async function loadArtistImages(folderName) {
   const all = [...localImgs, ...remoteImgs];
   if (all.length) {
     artistImgMem.set(folderName, all);
-    try { localStorage.setItem('fg_artist_imgs_v2_' + folderName, JSON.stringify(all)); } catch(_) {}
+    try { localStorage.setItem('fg_artist_imgs_v3_' + folderName, JSON.stringify(all)); } catch(_) {}
     return all;
   }
 
   artistImgMem.set(folderName, null);
-  try { localStorage.setItem('fg_artist_imgs_v2_' + folderName, 'none'); } catch(_) {}
+  try { localStorage.setItem('fg_artist_imgs_v3_' + folderName, 'none'); } catch(_) {}
   return null;
 }
 
