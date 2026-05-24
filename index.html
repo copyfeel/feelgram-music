@@ -4947,7 +4947,8 @@ function setHeroBgUrl(url) {
   if (!bg) return;
   const im = new Image();
   im.onload = () => {
-    bg.style.backgroundImage = `url(${JSON.stringify(url).slice(1, -1)})`;
+    // Quote the URL so CSS url() can hold parens/spaces (e.g. "시와 (소요)").
+    bg.style.backgroundImage = `url(${JSON.stringify(url)})`;
     bg.classList.add('loaded');
   };
   im.src = url;
