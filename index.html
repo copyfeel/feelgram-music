@@ -3589,7 +3589,7 @@ main {
 <!-- Build marker — visible in the top-right corner. If you see this label
      with the latest commit hash it confirms the new shell has landed.
      Tiny enough not to disturb the layout. -->
-<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v11</div>
+<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v12</div>
 
 <!-- Drawer Overlay -->
 <div class="drawer-overlay" id="drawerOverlay"></div>
@@ -7113,9 +7113,11 @@ function renderRaList() {
   data.forEach((r, i) => {
     if (r.type === 'playlist') {
       const pl = playlists2.find(p => p.id === r.playlistId);
-      if (!pl || !pl.songs.length) return;
-      const m = document.getElementById(`ra-pm-${i}`);
-      if (m) loadCardArt(pl.songs[0].fn, m);
+      if (!pl) return;
+      pl.songs.slice(0, 4).forEach((s, j) => {
+        const m = document.getElementById(`ra-pm-${i}-${j}`);
+        if (m) loadCardArt(s.fn, m);
+      });
       return;
     }
     const img = document.getElementById(`ra-img-${i}`);
@@ -7212,6 +7214,12 @@ function attachRaSwipeHandlers() {
     content.addEventListener('touchcancel', onEnd);
   });
 }
+// Smaller variant of the home-strip mosaic, sized for the 44px ra-art slot.
+const RA_MOSAIC_ART_STYLE  = 'display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:1px;padding:0;background:transparent;width:44px;height:44px;place-items:stretch;align-items:stretch;justify-content:stretch;justify-items:stretch;font-size:0';
+const RA_MOSAIC_TILE_STYLE = 'position:relative;background:#e5e5e5;overflow:hidden;display:flex;align-items:center;justify-content:center;border-radius:3px';
+const RA_MOSAIC_IMG_STYLE  = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block';
+const RA_MOSAIC_FB_STYLE   = 'display:block;width:42%;height:42%;border-radius:50%;background:#fff;border:1px solid rgba(0,0,0,0.04)';
+
 function renderRaPlaylistRow(r, i) {
   const pl = playlists2.find(p => p.id === r.playlistId);
   const name = pl ? pl.name : '(deleted)';
@@ -7222,7 +7230,10 @@ function renderRaPlaylistRow(r, i) {
     const min = sec ? Math.round(sec / 60) : 0;
     sub = `${n} item${n === 1 ? '' : 's'}${min ? ` · ${min} min` : ''}`;
   }
-  const hasFirst = pl && pl.songs[0];
+  const tiles = [0, 1, 2, 3].map(j => {
+    const s = pl ? pl.songs[j] : null;
+    return `<div class="ra-mosaic-tile" style="${RA_MOSAIC_TILE_STYLE}">${s ? `<img id="ra-pm-${i}-${j}" alt="" style="${RA_MOSAIC_IMG_STYLE}">` : ''}<span class="ra-mosaic-fb" style="${RA_MOSAIC_FB_STYLE}"></span></div>`;
+  }).join('');
   return `<div class="ra-row" data-idx="${i}" style="--idx:${i}">
     <div class="ra-delete-bg">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -7233,10 +7244,7 @@ function renderRaPlaylistRow(r, i) {
       <span class="ll-delete-text">Delete</span>
     </div>
     <div class="ra-item ra-swipe-content" onclick="raRowClick(event, ${i})">
-      <div class="ra-art">
-        ${hasFirst ? `<img id="ra-pm-${i}" alt="">` : ''}
-        <span class="ra-art-fb">♫</span>
-      </div>
+      <div class="ra-art" style="${RA_MOSAIC_ART_STYLE}">${tiles}</div>
       <div class="ra-info">
         <div class="ra-album-label">Playlist</div>
         <div class="ra-item-title">${esc(name)}</div>
