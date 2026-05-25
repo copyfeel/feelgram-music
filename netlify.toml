@@ -6,3 +6,26 @@
   [headers.values]
     Cache-Control = "public, max-age=31536000"
     Accept-Ranges = "bytes"
+
+# Shell files must never sit in the browser HTTP cache — otherwise iOS
+# PWAs can keep serving a stale index.html / sw.js / manifest for hours
+# after a deploy. no-store forces a fresh fetch every navigation.
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "no-store, max-age=0"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-store, max-age=0"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-store, max-age=0"
+
+[[headers]]
+  for = "/manifest.json"
+  [headers.values]
+    Cache-Control = "no-store, max-age=0"
