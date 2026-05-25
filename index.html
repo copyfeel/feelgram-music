@@ -1569,6 +1569,40 @@ main {
 .ha-card-title-text { font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; letter-spacing: -0.1px; }
 .ha-card-sub { font-family: 'Inter', sans-serif; font-size: 10px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; letter-spacing: 0.2px; }
 .ha-empty { padding: 24px 20px; font-size: 13px; color: var(--text3); text-align: center; }
+/* Playlist card — 2x2 mosaic; each tile holds either a song's album
+   art or a vinyl-style placeholder so the slot is always visible. */
+.ha-card-art.ha-card-art-mosaic {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 2px;
+  padding: 0;
+  background: #ffffff;
+  font-size: 0;
+}
+.ha-mosaic-tile {
+  position: relative;
+  background: #e5e5e5;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ha-mosaic-tile img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: none;
+}
+.ha-mosaic-tile img.loaded { display: block; }
+.ha-mosaic-tile img.loaded ~ .ha-mosaic-fb { display: none; }
+.ha-mosaic-fb {
+  display: block;
+  width: 42%; height: 42%;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1px solid rgba(0,0,0,0.04);
+}
 
 /* Recent Activity full-screen view (slides in from right) */
 .ra-screen {
@@ -6766,9 +6800,11 @@ function renderActivityCards() {
   data.forEach((r, i) => {
     if (r.type === 'playlist') {
       const pl = playlists2.find(p => p.id === r.playlistId);
-      if (!pl || !pl.songs.length) return;
-      const m = document.getElementById(`ha-pm-${i}`);
-      if (m) loadCardArt(pl.songs[0].fn, m);
+      if (!pl) return;
+      pl.songs.slice(0, 4).forEach((s, j) => {
+        const m = document.getElementById(`ha-pm-${i}-${j}`);
+        if (m) loadCardArt(s.fn, m);
+      });
       return;
     }
     const img = document.getElementById(`ha-img-${i}`);
@@ -6779,9 +6815,10 @@ function renderActivityCards() {
 
 function renderActivityPlaylistCard(r, i) {
   const pl = playlists2.find(p => p.id === r.playlistId);
+  const emptyTiles = [0,1,2,3].map(() => `<div class="ha-mosaic-tile"><span class="ha-mosaic-fb"></span></div>`).join('');
   if (!pl) {
     return `<div class="ha-card is-playlist deleted" data-idx="${i}">
-      <div class="ha-card-art"><span class="ha-art-fb">♫</span></div>
+      <div class="ha-card-art ha-card-art-mosaic">${emptyTiles}</div>
       <div class="ha-card-type">Playlist</div>
       <div class="ha-card-title-row"><span class="ha-card-title-text">(deleted)</span></div>
       <div class="ha-card-sub"></div>
@@ -6791,12 +6828,14 @@ function renderActivityPlaylistCard(r, i) {
   const sec = pl.songs.reduce((s, x) => s + (durationCache[x.fn] || 0), 0);
   const min = sec ? Math.round(sec / 60) : 0;
   const sub = `${n} item${n === 1 ? '' : 's'}${min ? ` · ${min} min` : ''}`;
-  const first = pl.songs[0];
+  // Always 4 tiles. Empty slots show the vinyl placeholder so a 1-item
+  // playlist still reads as a mosaic (1 art + 3 placeholders).
+  const tiles = [0, 1, 2, 3].map(j => {
+    const s = pl.songs[j];
+    return `<div class="ha-mosaic-tile">${s ? `<img id="ha-pm-${i}-${j}" alt="">` : ''}<span class="ha-mosaic-fb"></span></div>`;
+  }).join('');
   return `<div class="ha-card is-playlist" data-idx="${i}" onclick="playActivityCard(${i})">
-    <div class="ha-card-art">
-      ${first ? `<img id="ha-pm-${i}" alt="">` : ''}
-      <span class="ha-art-fb">♫</span>
-    </div>
+    <div class="ha-card-art ha-card-art-mosaic">${tiles}</div>
     <div class="ha-card-type">Playlist</div>
     <div class="ha-card-title-row">
       <span class="ha-card-title-text">${esc(pl.name)}</span>
