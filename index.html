@@ -4651,17 +4651,12 @@ main {
 // Safari tab pointing at the audio URL, which steals the audio session and
 // stops playback.
 if ('serviceWorker' in navigator) {
+  let swRegistration = null;
   window.addEventListener('load', async () => {
     try {
-      // updateViaCache: 'none' bypasses the HTTP cache when fetching sw.js
-      // so byte-diff detection always sees the freshest worker. Without it
-      // iOS Safari sometimes serves a cached sw.js for hours.
       const reg = await navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' });
-      // Belt-and-suspenders: still trigger an explicit update check.
+      swRegistration = reg;
       reg.update().catch(() => {});
-      // When a new SW takes over (clients.claim in our activate handler),
-      // reload once so the page actually runs the fresh shell. Without this
-      // the user sees the previous HTML/CSS until the next manual refresh.
       let refreshed = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (refreshed) return;
@@ -4669,6 +4664,14 @@ if ('serviceWorker' in navigator) {
         location.reload();
       });
     } catch(_) {}
+  });
+  // PWA returning to the foreground rarely triggers an SW update on iOS.
+  // Force the check every time the page becomes visible so a fresh shell
+  // can land without requiring an explicit pull-to-refresh.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && swRegistration) {
+      swRegistration.update().catch(() => {});
+    }
   });
 }
 // ── STATE ──
