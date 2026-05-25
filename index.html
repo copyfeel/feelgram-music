@@ -3589,7 +3589,7 @@ main {
 <!-- Build marker — visible in the top-right corner. If you see this label
      with the latest commit hash it confirms the new shell has landed.
      Tiny enough not to disturb the layout. -->
-<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v12</div>
+<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v13</div>
 
 <!-- Drawer Overlay -->
 <div class="drawer-overlay" id="drawerOverlay"></div>
@@ -4651,7 +4651,7 @@ main {
   <div class="ra-list" id="raList"></div>
 </div>
 
-<audio id="audioEl" playsinline webkit-playsinline x-webkit-airplay="allow" preload="metadata"></audio>
+<audio id="audioEl" playsinline webkit-playsinline x-webkit-airplay="allow" preload="auto"></audio>
 <script>
 // Register a minimal Service Worker so iOS treats this as a fully installed PWA.
 // Without this, tapping the lockscreen Now Playing widget can open a new
@@ -5090,9 +5090,23 @@ function playAll(folderIdx) { playFromFolder(folderIdx, 0); }
 function playCurrent() {
   const fn = currentQueue[currentIdx];
   if (!fn) return;
+  // Skip explicit audio.load() — on the iOS lock screen it can reset the
+  // audio session mid-transition, leaving the element advancing silently.
+  // Assigning src is enough; the browser begins fetching immediately
+  // (preload="auto") and play() picks up as soon as data arrives.
   audio.src = 'music/' + encodeURIComponent(fn);
-  audio.load();
-  audio.play().catch(() => {});
+  const startPlay = () => {
+    const p = audio.play();
+    if (p && typeof p.catch === 'function') {
+      p.catch(() => {
+        // Lock-screen track-transitions sometimes reject the first play()
+        // before the new media element is ready. A single retry on the
+        // next tick recovers without prompting the user.
+        setTimeout(() => audio.play().catch(() => {}), 80);
+      });
+    }
+  };
+  startPlay();
   updateNowPlaying(fn);
   setPlayIcons(true);
   highlightPlaying(fn);
