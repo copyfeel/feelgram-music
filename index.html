@@ -3589,7 +3589,7 @@ main {
 <!-- Build marker — visible in the top-right corner. If you see this label
      with the latest commit hash it confirms the new shell has landed.
      Tiny enough not to disturb the layout. -->
-<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v13</div>
+<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v14</div>
 
 <!-- Drawer Overlay -->
 <div class="drawer-overlay" id="drawerOverlay"></div>
@@ -5087,9 +5087,14 @@ function playFromFolder(folderIdx, songIdx) {
 
 function playAll(folderIdx) { playFromFolder(folderIdx, 0); }
 
+// Track whether we already swapped src ahead of `ended` so the ended
+// handler doesn't double-advance. Reset on every fresh play.
+let _preemptiveAdvanced = false;
+
 function playCurrent() {
   const fn = currentQueue[currentIdx];
   if (!fn) return;
+  _preemptiveAdvanced = false;
   // Skip explicit audio.load() — on the iOS lock screen it can reset the
   // audio session mid-transition, leaving the element advancing silently.
   // Assigning src is enough; the browser begins fetching immediately
@@ -5678,6 +5683,10 @@ function toggleRepeat() {
 }
 
 audio.onended = () => {
+  // If we already swapped to the next src preemptively (see ontimeupdate
+  // below), the ended event is the *previous* track winding down — let
+  // the preemptive advance own playback and just clear the flag.
+  if (_preemptiveAdvanced) { _preemptiveAdvanced = false; return; }
   if (repeat === 'one') { audio.play(); return; }
   if (repeat === 'all' || currentIdx < currentQueue.length - 1) { nextTrack(); }
   else setPlayIcons(false);
@@ -5691,6 +5700,40 @@ function fmtTime(s) {
 
 audio.ontimeupdate = () => {
   if (!audio.duration) return;
+  // ── Lock-screen continuity ───────────────────────────────────────
+  // iOS WebKit treats ended → src change as a fresh background play,
+  // which it silences. Swap src ~0.4s before the track ends, while the
+  // audio session is still active, so the next clip inherits the live
+  // session and keeps producing sound on the lock screen.
+  if (!_preemptiveAdvanced &&
+      audio.duration - audio.currentTime < 0.4 &&
+      repeat !== 'one') {
+    const hasNext = currentIdx < currentQueue.length - 1 || repeat === 'all';
+    if (hasNext) {
+      _preemptiveAdvanced = true;
+      currentIdx = (currentIdx + 1) % currentQueue.length;
+      const nextFn = currentQueue[currentIdx];
+      audio.src = 'music/' + encodeURIComponent(nextFn);
+      const p = audio.play();
+      if (p && typeof p.catch === 'function') p.catch(() => {
+        setTimeout(() => audio.play().catch(() => {}), 80);
+      });
+      updateNowPlaying(nextFn);
+      setPlayIcons(true);
+      highlightPlaying(nextFn);
+      addToRecent(nextFn, currentFolder);
+      const llIdx = listenLater.findIndex(r => r.fn === nextFn);
+      if (llIdx >= 0 && !listenLater[llIdx].played) {
+        listenLater[llIdx].played = true;
+        saveListenLater();
+        renderListenLaterCard();
+        const llScreen = document.getElementById('listenLaterScreen');
+        if (llScreen && llScreen.classList.contains('open')) renderLlList();
+      }
+      saveState();
+      return;
+    }
+  }
   const pct = (audio.currentTime / audio.duration) * 100 + '%';
   document.getElementById('fpProgFill').style.width  = pct;
   document.getElementById('dProgFill').style.width   = pct;
