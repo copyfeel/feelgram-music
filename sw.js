@@ -7,14 +7,23 @@
 //     (e.g. .../music/song.mp3) in Safari — instead of showing a stray "site",
 //     intercept the navigation and bounce it back to the PWA root.
 
-const CACHE = 'feelgram-shell-v4';
+const CACHE = 'feelgram-shell-v5';
 const SHELL = ['./', './index.html', './manifest.json', './icon.png'];
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
-  event.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(SHELL).catch(() => {}))
-  );
+  // Force each SHELL request to bypass the HTTP cache — c.addAll() goes
+  // through the browser cache by default, so without this a stale cached
+  // index.html can land in the new CACHE and persist indefinitely.
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    await Promise.all(SHELL.map(async (url) => {
+      try {
+        const res = await fetch(url, { cache: 'reload' });
+        if (res && res.ok) await cache.put(url, res);
+      } catch (_) {}
+    }));
+  })());
 });
 
 self.addEventListener('activate', (event) => {
