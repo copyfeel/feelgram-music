@@ -3587,7 +3587,7 @@ main {
 <!-- Build marker — visible in the top-right corner. If you see this label
      with the latest commit hash it confirms the new shell has landed.
      Tiny enough not to disturb the layout. -->
-<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v8</div>
+<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v9</div>
 
 <!-- Drawer Overlay -->
 <div class="drawer-overlay" id="drawerOverlay"></div>
@@ -6845,11 +6845,17 @@ function renderActivityCards() {
 // order — the absolutely-positioned image covers the centered fb circle
 // the moment src points at an opaque album-art data URL; before that the
 // 1x1 transparent placeholder lets the vinyl circle show through.
-const MOSAIC_ART_STYLE  = 'display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:2px;padding:0;background:#fff;width:158px;height:158px';
+// place-items:stretch is critical: the parent .ha-card-art rule inherits
+// align-items:center; justify-content:center; from its flex defaults, and
+// without an explicit stretch the grid tiles collapse to the size of
+// their fb placeholder instead of filling each cell. That's why earlier
+// mosaic renders looked like tiny art squares clustered in the middle.
+const MOSAIC_ART_STYLE  = 'display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:2px;padding:0;background:#fff;width:158px;height:158px;place-items:stretch;align-items:stretch;justify-content:stretch;justify-items:stretch';
 const MOSAIC_TILE_STYLE = 'position:relative;background:#e5e5e5;overflow:hidden;display:flex;align-items:center;justify-content:center';
 const MOSAIC_IMG_STYLE  = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block';
 const MOSAIC_FB_STYLE   = 'display:block;width:42%;height:42%;border-radius:50%;background:#fff;border:1px solid rgba(0,0,0,0.04)';
-const TRANSPARENT_PX    = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAEALAAAAAABAAEAAAICTAEAOw==';
+// (TRANSPARENT_PX is no longer used — img element with no src + empty alt
+// is invisible until loadCardArt assigns an opaque src.)
 
 function renderActivityPlaylistCard(r, i) {
   const pl = playlists2.find(p => p.id === r.playlistId);
@@ -6868,7 +6874,7 @@ function renderActivityPlaylistCard(r, i) {
   const sub = `${n} item${n === 1 ? '' : 's'}${min ? ` · ${min} min` : ''}`;
   const tiles = [0, 1, 2, 3].map(j => {
     const s = pl.songs[j];
-    return `<div class="ha-mosaic-tile" style="${MOSAIC_TILE_STYLE}">${s ? `<img id="ha-pm-${i}-${j}" alt="" src="${TRANSPARENT_PX}" style="${MOSAIC_IMG_STYLE}">` : ''}<span class="ha-mosaic-fb" style="${MOSAIC_FB_STYLE}"></span></div>`;
+    return `<div class="ha-mosaic-tile" style="${MOSAIC_TILE_STYLE}">${s ? `<img id="ha-pm-${i}-${j}" alt="" style="${MOSAIC_IMG_STYLE}">` : ''}<span class="ha-mosaic-fb" style="${MOSAIC_FB_STYLE}"></span></div>`;
   }).join('');
   return `<div class="ha-card is-playlist" data-idx="${i}" onclick="playActivityCard(${i})">
     <div class="ha-card-art ha-card-art-mosaic" style="${MOSAIC_ART_STYLE}">${tiles}</div>
