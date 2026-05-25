@@ -7,7 +7,7 @@
 //     (e.g. .../music/song.mp3) in Safari — instead of showing a stray "site",
 //     intercept the navigation and bounce it back to the PWA root.
 
-const CACHE = 'feelgram-shell-v3';
+const CACHE = 'feelgram-shell-v4';
 const SHELL = ['./', './index.html', './manifest.json', './icon.png'];
 
 self.addEventListener('install', (event) => {
@@ -18,11 +18,17 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
-    ).then(() => self.clients.claim())
-  );
+  event.waitUntil((async () => {
+    // Drop stale caches from previous versions.
+    const keys = await caches.keys();
+    await Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)));
+    await self.clients.claim();
+    // After a cache-key bump, force every controlled tab/PWA window to
+    // reload so they pick up the fresh HTML/CSS/JS immediately — otherwise
+    // users see the previous shell until the next manual refresh.
+    const clients = await self.clients.matchAll({ type: 'window' });
+    clients.forEach((c) => { try { c.navigate(c.url); } catch (_) {} });
+  })());
 });
 
 // The HTML we return for "wrong" navigations — instructs the browser to focus
