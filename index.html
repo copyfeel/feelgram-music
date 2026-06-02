@@ -293,6 +293,7 @@ main {
 }
 .lh-icon { font-size: 22px; }
 .lh-name { font-size: 22px; font-weight: 800; flex: 1; letter-spacing: -0.3px; }
+.lh-fav-heart { flex-shrink: 0; margin-left: -4px; margin-right: 2px; }
 .lh-count { font-size: 12px; color: var(--text2); }
 .btn-play-all {
   display: inline-flex;
@@ -2979,7 +2980,7 @@ main {
 .ha-artist-name {
   font-family: 'Inter', sans-serif;
   font-size: 14px; font-weight: 600;
-  text-align: left; color: var(--text);
+  text-align: center; color: var(--text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
@@ -2998,7 +2999,7 @@ main {
 .ya-screen.open { transform: translateX(0); }
 .ya-top-bar {
   display: flex; align-items: center;
-  padding: 12px 16px 8px;
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 8px;
   gap: 8px;
 }
 .ya-screen-title {
@@ -3120,7 +3121,58 @@ main {
 .ya-menu-row:last-child { border-bottom: none; }
 .ya-menu-row:active { opacity: .6; }
 .ya-menu-icon { display: flex; align-items: center; justify-content: center; color: var(--text2); flex-shrink: 0; width: 22px; }
-.ya-menu-row.favorite-on .ya-menu-icon { color: #ff8a95; }
+/* Favorite heart: outline by default, filled pink when active. */
+.ya-fav-row .ya-menu-icon { color: var(--text); }
+.ya-fav-row .ya-menu-icon svg { fill: none; }
+.ya-fav-row.favorite-on .ya-menu-icon { color: #ff8a95; }
+.ya-fav-row.favorite-on .ya-menu-icon svg { fill: currentColor; }
+
+/* ── Tag sheet ── */
+.tag-sheet { z-index: 115; max-height: 80vh; display: flex; flex-direction: column; }
+.tag-input-row { display: flex; gap: 8px; padding: 14px 4px 8px; }
+.tag-input {
+  flex: 1; box-sizing: border-box;
+  padding: 10px 14px;
+  border: 1px solid var(--surface2); border-radius: 12px;
+  background: var(--surface);
+  font-family: 'Inter', sans-serif; font-size: 14px; color: var(--text);
+  outline: none;
+}
+.tag-add-btn {
+  padding: 10px 18px;
+  background: var(--text); color: white;
+  border: none; border-radius: 12px;
+  font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600;
+  cursor: pointer; flex-shrink: 0;
+}
+.tag-add-btn:active { opacity: .8; }
+.tag-list { flex: 1; overflow-y: auto; padding: 6px 4px 4px; }
+.tag-list-empty { padding: 24px 16px; text-align: center; color: var(--text3); font-size: 13px; }
+.tag-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 4px;
+  background: none; border: none; width: 100%;
+  font-family: 'Inter', sans-serif; font-size: 14px; color: var(--text);
+  text-align: left; cursor: pointer;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+.tag-row:last-child { border-bottom: none; }
+.tag-row:active { opacity: .7; }
+.tag-check {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 1.5px solid var(--text3);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; color: white;
+  transition: background .15s ease, border-color .15s ease;
+}
+.tag-check svg { width: 12px; height: 12px; display: none; }
+.tag-row.on .tag-check { background: #7d57e5; border-color: #7d57e5; }
+.tag-row.on .tag-check svg { display: block; }
+.tag-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tag-remove {
+  background: none; border: none; padding: 4px;
+  color: var(--text3); cursor: pointer; flex-shrink: 0;
+}
 .ll-caught {
   font-family: 'Playfair Display', 'Times New Roman', Georgia, serif;
   font-size: 12px;
@@ -3765,7 +3817,7 @@ main {
 <!-- Build marker — visible in the top-right corner. If you see this label
      with the latest commit hash it confirms the new shell has landed.
      Tiny enough not to disturb the layout. -->
-<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v17</div>
+<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v18</div>
 
 <!-- Drawer Overlay -->
 <div class="drawer-overlay" id="drawerOverlay"></div>
@@ -4880,8 +4932,12 @@ main {
     </button>
   </div>
   <div class="ya-sheet-menu">
-    <button class="ya-menu-row" onclick="yaSheetToggleFavorite()">
-      <span class="ya-menu-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></span>
+    <button class="ya-menu-row ya-fav-row" id="yaFavoriteRow" onclick="yaSheetToggleFavorite()">
+      <span class="ya-menu-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        </svg>
+      </span>
       <span class="ya-menu-label" id="yaFavoriteLabel">Favorite</span>
     </button>
     <button class="ya-menu-row" onclick="yaSheetListenLater()">
@@ -4897,6 +4953,24 @@ main {
       <span class="ya-menu-label">Ban this artist</span>
     </button>
   </div>
+</div>
+
+<!-- Add to tag — bottom sheet -->
+<div class="sheet-backdrop" id="tagSheetBackdrop" onclick="closeTagSheet()"></div>
+<div class="ya-sheet tag-sheet" id="tagSheet">
+  <div class="ya-sheet-header" style="border-bottom:none;padding-bottom:8px">
+    <div class="ya-sheet-name" id="tagSheetName">Add to tag</div>
+    <button class="ya-sheet-close" onclick="closeTagSheet()" aria-label="닫기">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+  </div>
+  <div class="tag-input-row">
+    <input class="tag-input" id="tagInput" placeholder="새 태그 이름...">
+    <button class="tag-add-btn" onclick="tagAddNew()">Add</button>
+  </div>
+  <div class="tag-list" id="tagList"></div>
 </div>
 
 <!-- Recent Activity full-screen view -->
@@ -5145,6 +5219,7 @@ function renderSongList(folder) {
         <div class="list-header-row">
           <span class="lh-icon">♪</span>
           <span class="lh-name">${esc(folder.folder)}</span>
+          ${isArtistFavorite(folder.folder) ? `<svg class="lh-fav-heart" width="18" height="18" viewBox="0 0 24 24" fill="#ff8a95" stroke="#ff8a95" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>` : ''}
           <span class="lh-count">${folder.songs.length}곡</span>
         </div>
         <button class="btn-play-all" onclick="playAll(${currentFolder})">
@@ -7688,6 +7763,29 @@ function llCardPlay(i) {
   playFromFolder(fi, si);
 }
 
+// ── Artist tags ──
+// tagsList is the union of all tags the user has ever created. artistTags
+// maps folder → string[] of tags currently applied to that artist.
+let tagsList = [];
+let artistTags = {};
+function loadTags() {
+  try { const v = localStorage.getItem('fg_tagsList');   if (v) tagsList   = JSON.parse(v); } catch(_) {}
+  try { const v = localStorage.getItem('fg_artistTags'); if (v) artistTags = JSON.parse(v); } catch(_) {}
+}
+function saveTags() {
+  try { localStorage.setItem('fg_tagsList',   JSON.stringify(tagsList));   } catch(_) {}
+  try { localStorage.setItem('fg_artistTags', JSON.stringify(artistTags)); } catch(_) {}
+}
+function getArtistTags(folder)         { return artistTags[folder] || []; }
+function artistHasTag(folder, tag)     { return getArtistTags(folder).includes(tag); }
+function toggleArtistTag(folder, tag) {
+  const arr = (artistTags[folder] || []).slice();
+  const i = arr.indexOf(tag);
+  if (i >= 0) arr.splice(i, 1); else arr.push(tag);
+  if (arr.length) artistTags[folder] = arr; else delete artistTags[folder];
+  saveTags();
+}
+
 // ── Recent artists ──
 // Tracks the most-recently-played artist folders for the home strip and the
 // "Your recent artists" full-screen view. Banned artists are kept out.
@@ -7699,6 +7797,7 @@ function loadRecentArtists() {
   try { const v = localStorage.getItem('fg_recentArtists'); if (v) recentArtists = JSON.parse(v); } catch(_) {}
   try { const v = localStorage.getItem('fg_bannedArtists'); if (v) bannedArtists = JSON.parse(v); } catch(_) {}
   try { const v = localStorage.getItem('fg_artistFavorites'); if (v) artistFavorites = JSON.parse(v); } catch(_) {}
+  loadTags();
 }
 function saveRecentArtists()   { try { localStorage.setItem('fg_recentArtists',   JSON.stringify(recentArtists.slice(0, 100))); } catch(_) {} }
 function saveBannedArtists()   { try { localStorage.setItem('fg_bannedArtists',   JSON.stringify(bannedArtists));   } catch(_) {} }
@@ -7898,16 +7997,7 @@ async function openYaArtistSheet(folder) {
       }
     }
   } catch(_) {}
-  // Favorite label
-  const favLabel = document.getElementById('yaFavoriteLabel');
-  const favRow = favLabel && favLabel.closest('.ya-menu-row');
-  if (isArtistFavorite(folder)) {
-    if (favLabel) favLabel.textContent = 'Remove from favorites';
-    if (favRow) favRow.classList.add('favorite-on');
-  } else {
-    if (favLabel) favLabel.textContent = 'Favorite';
-    if (favRow) favRow.classList.remove('favorite-on');
-  }
+  refreshYaFavoriteUI(folder);
   document.getElementById('yaSheetBackdrop').classList.add('open');
   document.getElementById('yaArtistSheet').classList.add('open');
 }
@@ -7937,11 +8027,29 @@ function yaSheetStartRadio() {
     .forEach(b => b && b.classList.toggle('active', true));
   playFromFolder(fi, startIdx);
 }
+function refreshYaFavoriteUI(folder) {
+  const row = document.getElementById('yaFavoriteRow');
+  const label = document.getElementById('yaFavoriteLabel');
+  if (!row || !label) return;
+  if (isArtistFavorite(folder)) {
+    row.classList.add('favorite-on');
+    label.textContent = 'Remove from favorites';
+  } else {
+    row.classList.remove('favorite-on');
+    label.textContent = 'Favorite';
+  }
+}
 function yaSheetToggleFavorite() {
   if (!yaSheetFolder) return;
   const nowFav = toggleArtistFavorite(yaSheetFolder);
+  refreshYaFavoriteUI(yaSheetFolder);
   showToast(nowFav ? 'Added to Favorites' : 'Removed from Favorites', yaSheetFolder);
-  closeYaArtistSheet();
+  // Refresh artist-detail header heart if that view is currently mounted
+  // for this artist — keeps the pink indicator in sync without re-render.
+  if (currentFolder !== null && playlist[currentFolder] && playlist[currentFolder].folder === yaSheetFolder) {
+    renderSongList(playlist[currentFolder]);
+    applyHeroBackground(playlist[currentFolder]);
+  }
 }
 function yaSheetListenLater() {
   if (!yaSheetFolder) return;
@@ -7961,10 +8069,92 @@ function yaSheetListenLater() {
   closeYaArtistSheet();
 }
 function yaSheetAddToTag() {
-  // Placeholder — tag system not yet implemented.
-  showToast('Tags are coming soon', yaSheetFolder || '');
+  if (!yaSheetFolder) return;
+  const folder = yaSheetFolder;
   closeYaArtistSheet();
+  // Wait for the action sheet's close animation before opening the tag
+  // sheet so the two don't visibly overlap.
+  setTimeout(() => openTagSheet(folder), 240);
 }
+
+// ── Tag sheet ──
+let tagSheetFolder = null;
+function openTagSheet(folder) {
+  tagSheetFolder = folder;
+  document.getElementById('tagSheetName').textContent = folder ? `${folder} — 태그` : 'Add to tag';
+  const input = document.getElementById('tagInput');
+  if (input) input.value = '';
+  renderTagList();
+  document.getElementById('tagSheetBackdrop').classList.add('open');
+  document.getElementById('tagSheet').classList.add('open');
+}
+function closeTagSheet() {
+  document.getElementById('tagSheetBackdrop').classList.remove('open');
+  document.getElementById('tagSheet').classList.remove('open');
+  tagSheetFolder = null;
+}
+function renderTagList() {
+  const list = document.getElementById('tagList');
+  if (!list) return;
+  if (!tagsList.length) {
+    list.innerHTML = `<div class="tag-list-empty">아직 태그가 없습니다.<br>위에 이름을 입력하고 Add를 누르세요.</div>`;
+    return;
+  }
+  list.innerHTML = tagsList.map((tag, i) => {
+    const on = tagSheetFolder && artistHasTag(tagSheetFolder, tag);
+    return `<button class="tag-row ${on ? 'on' : ''}" onclick="tagToggle(${i})">
+      <span class="tag-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+      <span class="tag-name">${esc(tag)}</span>
+      <span class="tag-remove" onclick="event.stopPropagation();tagDelete(${i})" aria-label="삭제">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </span>
+    </button>`;
+  }).join('');
+}
+function tagToggle(i) {
+  const tag = tagsList[i];
+  if (!tag || !tagSheetFolder) return;
+  toggleArtistTag(tagSheetFolder, tag);
+  renderTagList();
+}
+function tagAddNew() {
+  const input = document.getElementById('tagInput');
+  if (!input) return;
+  const value = (input.value || '').trim();
+  if (!value) return;
+  if (!tagsList.includes(value)) tagsList.unshift(value);
+  // Apply to the current artist immediately if we opened the sheet from
+  // an artist context — creating a tag from this sheet implicitly assigns
+  // it to the artist that's being tagged.
+  if (tagSheetFolder && !artistHasTag(tagSheetFolder, value)) {
+    toggleArtistTag(tagSheetFolder, value);
+  } else {
+    saveTags();
+  }
+  input.value = '';
+  renderTagList();
+}
+function tagDelete(i) {
+  const tag = tagsList[i];
+  if (!tag) return;
+  if (!confirm(`태그 "${tag}"를 모든 아티스트에서 제거합니다?`)) return;
+  tagsList.splice(i, 1);
+  Object.keys(artistTags).forEach(k => {
+    artistTags[k] = (artistTags[k] || []).filter(t => t !== tag);
+    if (!artistTags[k].length) delete artistTags[k];
+  });
+  saveTags();
+  renderTagList();
+}
+
+// Tag input: Enter triggers Add
+window.addEventListener('load', () => {
+  const input = document.getElementById('tagInput');
+  if (!input) return;
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); tagAddNew(); }
+  });
+});
 function yaSheetBan() {
   if (!yaSheetFolder) return;
   const folder = yaSheetFolder;
