@@ -3039,12 +3039,37 @@ main {
 }
 .ya-list { flex: 1; overflow-y: auto; padding: 4px 0 24px; }
 .ya-row {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+.ya-delete-bg {
+  position: absolute;
+  inset: 0;
+  display: flex; align-items: center; justify-content: flex-start;
+  gap: 8px;
+  padding-left: 22px;
+  color: white;
+  background: linear-gradient(90deg, #e54e4e 0%, #d04949 100%);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px; font-weight: 700;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .12s ease;
+}
+.ya-row.swiping .ya-delete-bg { opacity: 1; }
+.ya-swipe-content {
+  position: relative;
+  z-index: 1;
+  background: var(--bg, #fff);
+  transform: translateX(0);
+  will-change: transform;
+  touch-action: pan-y;
   display: flex; align-items: center;
   gap: 14px;
   padding: 8px 20px;
-  cursor: pointer;
 }
-.ya-row:active { background: var(--surface2); }
+.ya-swipe-content:active { background: var(--surface2); }
 .ya-row-art {
   width: 44px; height: 44px; flex-shrink: 0;
   border-radius: 50%;
@@ -3829,7 +3854,7 @@ main {
 <!-- Build marker — visible in the top-right corner. If you see this label
      with the latest commit hash it confirms the new shell has landed.
      Tiny enough not to disturb the layout. -->
-<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v21</div>
+<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v22</div>
 
 <!-- Drawer Overlay -->
 <div class="drawer-overlay" id="drawerOverlay"></div>
@@ -7964,17 +7989,27 @@ function renderYaList() {
   }
   list.innerHTML = data.map((r, i) => {
     const initial = (r.folder || '?').trim().charAt(0).toUpperCase();
-    return `<div class="ya-row" onclick="yaRowClick(${i})">
-      <div class="ya-row-art">
-        <img id="ya-row-img-${i}" alt="" style="display:none">
-        <span class="ya-row-fb">${esc(initial)}</span>
-      </div>
-      <div class="ya-row-name">${esc(r.folder)}</div>
-      <button class="ya-row-more" onclick="event.stopPropagation();yaRowMoreClick(${i})" aria-label="더보기">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-          <circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/>
+    return `<div class="ya-row" data-idx="${i}">
+      <div class="ya-delete-bg">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"/>
+          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+          <path d="M10 11v6"/><path d="M14 11v6"/>
         </svg>
-      </button>
+        <span>Delete</span>
+      </div>
+      <div class="ya-swipe-content" onclick="yaRowClick(event, ${i})">
+        <div class="ya-row-art">
+          <img id="ya-row-img-${i}" alt="" style="display:none">
+          <span class="ya-row-fb">${esc(initial)}</span>
+        </div>
+        <div class="ya-row-name">${esc(r.folder)}</div>
+        <button class="ya-row-more" onclick="event.stopPropagation();yaRowMoreClick(${i})" aria-label="더보기">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/>
+          </svg>
+        </button>
+      </div>
     </div>`;
   }).join('');
   data.forEach(async (r, i) => {
@@ -7993,17 +8028,86 @@ function renderYaList() {
       img.src = url;
     } catch(_) {}
   });
+  attachYaSwipeHandlers();
 }
 function yaCurrentList() {
   const q = yaSearchQuery.trim().toLowerCase();
   const all = getVisibleArtists();
   return q ? all.filter(r => (r.folder || '').toLowerCase().includes(q)) : all;
 }
-function yaRowClick(i) {
+function yaRowClick(ev, i) {
+  // Ignore the click that follows a horizontal swipe gesture.
+  const row = ev.currentTarget.parentElement;
+  if (row && row.dataset.swiped === '1') { row.dataset.swiped = ''; return; }
   const r = yaCurrentList()[i];
   if (!r) return;
   closeYourArtists();
   navigateToArtist(r.folder);
+}
+function yaDeleteAt(i) {
+  // The on-screen list is filtered (search). Map the visible index back
+  // to recentArtists by folder name, then drop it.
+  const r = yaCurrentList()[i];
+  if (!r) return;
+  recentArtists = recentArtists.filter(x => x.folder !== r.folder);
+  saveRecentArtists();
+  renderYaList();
+  renderHomeArtists();
+}
+function attachYaSwipeHandlers() {
+  const rows = document.querySelectorAll('#yaList .ya-row');
+  rows.forEach(row => {
+    const content = row.querySelector('.ya-swipe-content');
+    if (!content) return;
+    let startX = 0, startY = 0, dx = 0, locked = false, active = false;
+    const onStart = (e) => {
+      const t = e.touches ? e.touches[0] : e;
+      startX = t.clientX; startY = t.clientY; dx = 0; locked = false; active = true;
+      content.style.transition = 'none';
+    };
+    const onMove = (e) => {
+      if (!active) return;
+      const t = e.touches ? e.touches[0] : e;
+      const ddx = t.clientX - startX;
+      const ddy = t.clientY - startY;
+      if (!locked) {
+        if (Math.abs(ddx) < 6 && Math.abs(ddy) < 6) return;
+        if (Math.abs(ddy) > Math.abs(ddx)) { active = false; return; }
+        locked = true;
+        row.classList.add('swiping');
+      }
+      dx = Math.max(0, ddx);
+      content.style.transform = `translateX(${dx}px)`;
+      if (e.cancelable) e.preventDefault();
+    };
+    const onEnd = () => {
+      if (!active) return;
+      active = false;
+      content.style.transition = 'transform .25s cubic-bezier(.4,0,.2,1)';
+      const width = row.getBoundingClientRect().width;
+      const threshold = width * 0.6;
+      if (dx > threshold) {
+        content.style.transform = `translateX(${width}px)`;
+        row.dataset.swiped = '1';
+        setTimeout(() => {
+          const i = parseInt(row.dataset.idx, 10);
+          if (!isNaN(i)) yaDeleteAt(i);
+        }, 220);
+      } else {
+        content.style.transform = '';
+        setTimeout(() => row.classList.remove('swiping'), 260);
+        if (dx > 6) {
+          row.dataset.swiped = '1';
+          setTimeout(() => { row.dataset.swiped = ''; }, 200);
+        }
+      }
+      dx = 0;
+    };
+    content.addEventListener('touchstart', onStart, { passive: true });
+    content.addEventListener('touchmove',  onMove,  { passive: false });
+    content.addEventListener('touchend',   onEnd);
+    content.addEventListener('touchcancel', onEnd);
+  });
 }
 function yaRowMoreClick(i) {
   const r = yaCurrentList()[i];
