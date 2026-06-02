@@ -1517,6 +1517,12 @@ main {
   flex: 1; overflow-y: auto;
   display: flex; flex-direction: column;
 }
+/* Home sections must not shrink along the main axis — without this,
+   #homeView's flex column makes them compress to fit the viewport
+   instead of growing with their content, so Listen Later cards overflow
+   into the artists strip below as the list fills up. */
+#homeView > .ha-section,
+#homeView > .ll-section { flex-shrink: 0; }
 #mainContent { display: none; } /* hidden by default on mobile and desktop;
    JS shows it via showSongList() when an artist is selected. */
 .ha-section { padding: 18px 0 6px; }
@@ -3817,7 +3823,7 @@ main {
 <!-- Build marker — visible in the top-right corner. If you see this label
      with the latest commit hash it confirms the new shell has landed.
      Tiny enough not to disturb the layout. -->
-<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v18</div>
+<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v19</div>
 
 <!-- Drawer Overlay -->
 <div class="drawer-overlay" id="drawerOverlay"></div>
