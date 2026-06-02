@@ -3854,7 +3854,7 @@ main {
 <!-- Build marker — visible in the top-right corner. If you see this label
      with the latest commit hash it confirms the new shell has landed.
      Tiny enough not to disturb the layout. -->
-<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v24</div>
+<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v25</div>
 
 <!-- Drawer Overlay -->
 <div class="drawer-overlay" id="drawerOverlay"></div>
@@ -5060,6 +5060,21 @@ if ('serviceWorker' in navigator) {
 // ── STATE ──
 const audio = document.getElementById('audioEl');
 let playlist = [], currentFolder = null, currentQueue = [], originalQueue = [], currentIdx = -1;
+
+// Build the URL we hand to the <audio> element. When a service worker is
+// in control we use a generic /audio?fn= API path so that the URL the
+// iOS lock-screen widget exposes carries no .mp3 extension — external
+// apps that register themselves as handlers for audio file types (e.g.
+// Magnum Photos in some users' configurations) won't match it. The SW
+// proxies the request back to /music/<fn>. If no SW is registered or
+// active yet (very first page load before activation) we fall back to
+// the direct URL so audio still plays.
+function audioUrlFor(fn) {
+  if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+    return '/audio?fn=' + encodeURIComponent(fn);
+  }
+  return 'music/' + encodeURIComponent(fn);
+}
 let shuffle = false, repeat = 'none', currentHsl = null;
 const artCache = new Map(); // fn → data URL (stable, never revoked)
 
@@ -5478,7 +5493,7 @@ function playCurrent() {
   // audio session mid-transition, leaving the element advancing silently.
   // Assigning src is enough; the browser begins fetching immediately
   // (preload="auto") and play() picks up as soon as data arrives.
-  audio.src = 'music/' + encodeURIComponent(fn);
+  audio.src = audioUrlFor(fn);
   const startPlay = () => {
     const p = audio.play();
     if (p && typeof p.catch === 'function') {
@@ -6095,7 +6110,7 @@ audio.ontimeupdate = () => {
       _preemptiveAdvanced = true;
       currentIdx = (currentIdx + 1) % currentQueue.length;
       const nextFn = currentQueue[currentIdx];
-      audio.src = 'music/' + encodeURIComponent(nextFn);
+      audio.src = audioUrlFor(nextFn);
       const p = audio.play();
       if (p && typeof p.catch === 'function') p.catch(() => {
         setTimeout(() => audio.play().catch(() => {}), 80);
@@ -7179,7 +7194,7 @@ function restoreState() {
       document.title = title + ' — Feelgram Music';
       // audio src 복원 (재생은 안 함, 탭 후 play 가능하도록)
       audio.preload = 'none';
-      audio.src = 'music/' + encodeURIComponent(fn);
+      audio.src = audioUrlFor(fn);
       // 아트 복원
       loadAlbumArt('music/' + encodeURIComponent(fn));
       // 셔플/반복 버튼

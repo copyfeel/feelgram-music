@@ -7,7 +7,7 @@
 //     (e.g. .../music/song.mp3) in Safari — instead of showing a stray "site",
 //     intercept the navigation and bounce it back to the PWA root.
 
-const CACHE = 'feelgram-shell-v6';
+const CACHE = 'feelgram-shell-v7';
 const SHELL = ['./', './index.html', './manifest.json', './icon.png'];
 
 self.addEventListener('install', (event) => {
@@ -75,7 +75,32 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  // 1) Top-level navigation to an audio file URL (the "tap lockscreen widget
+  // 1) /audio?fn=<encoded> — the audio element's src now uses this
+  //    generic API path (no .mp3 extension) to dodge external apps that
+  //    register themselves as system handlers for audio file URLs.
+  //    Proxy through to the real /music/<fn> response so playback is
+  //    unaffected. Navigation hits to /audio (lock-screen widget tap)
+  //    bounce to the PWA root, same as the .mp3 case below.
+  if (url.pathname === '/audio') {
+    if (req.mode === 'navigate') {
+      event.respondWith(new Response(REDIRECT_HTML, {
+        headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
+      }));
+      return;
+    }
+    const fn = url.searchParams.get('fn');
+    if (fn) {
+      const target = new URL('music/' + encodeURIComponent(fn), self.location.origin);
+      event.respondWith(fetch(target.href, {
+        method: req.method,
+        headers: req.headers,
+        cache: 'no-store'
+      }));
+      return;
+    }
+  }
+
+  // 2) Top-level navigation to an audio file URL (the "tap lockscreen widget
   //    opens an unknown site" failure mode on iOS). Bounce to the PWA root.
   if (req.mode === 'navigate' &&
       (/\.(mp3|m4a|wav|ogg|flac|wmv)$/i.test(url.pathname) ||
@@ -88,7 +113,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2) Pass-through for actual audio file requests (range-streamed by the
+  // 3) Pass-through for actual audio file requests (range-streamed by the
   //    audio element). DO NOT cache — files are large.
   if (/\.(mp3|m4a|wav|ogg|flac|wmv|lrc)$/i.test(url.pathname) ||
       url.pathname.startsWith('/music/') ||
