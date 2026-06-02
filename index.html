@@ -2945,6 +2945,182 @@ main {
   cursor: pointer;
 }
 .ll-divider { height: 1px; background: rgba(255, 255, 255, 0.75); margin: 7px 0 12px; }
+
+/* ── Your recent artists (home strip) ── */
+.ha-artists-header { display: flex; align-items: center; padding: 0 20px; margin-bottom: 14px; }
+.ha-artists-title {
+  flex: 1; margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 18px; font-weight: 700; letter-spacing: -0.3px;
+  color: var(--text);
+}
+.ha-artists-scroll {
+  display: flex; gap: 16px;
+  overflow-x: auto; padding: 0 20px 10px;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+.ha-artists-scroll::-webkit-scrollbar { display: none; }
+.ha-artist-card { flex-shrink: 0; width: 135px; cursor: pointer; scroll-snap-align: start; }
+.ha-artist-circle {
+  width: 135px; height: 135px;
+  border-radius: 50%;
+  background: var(--surface2);
+  overflow: hidden; position: relative;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 42px; color: var(--text3);
+  margin-bottom: 12px;
+}
+.ha-artist-circle img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%; object-fit: cover;
+  border-radius: 50%; display: block;
+}
+.ha-artist-name {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px; font-weight: 600;
+  text-align: left; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ── Your recent artists — full screen ── */
+.ya-screen {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  bottom: calc(var(--mini-h) + var(--nav-h) + env(safe-area-inset-bottom, 0px));
+  background: var(--bg);
+  z-index: 35;
+  transform: translateX(100%);
+  transition: transform .35s cubic-bezier(0.32, 0.72, 0, 1);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.ya-screen.open { transform: translateX(0); }
+.ya-top-bar {
+  display: flex; align-items: center;
+  padding: 12px 16px 8px;
+  gap: 8px;
+}
+.ya-screen-title {
+  flex: 1; margin: 0;
+  font-family: 'Playfair Display', 'Times New Roman', Georgia, serif;
+  font-size: 20px; font-weight: 400; letter-spacing: -0.3px;
+  text-align: center;
+  color: var(--text);
+}
+.ya-search-wrap {
+  max-height: 0; overflow: hidden;
+  transition: max-height .25s ease, padding .25s ease;
+  padding: 0 20px;
+}
+.ya-search-wrap.open { max-height: 56px; padding: 0 20px 10px; }
+.ya-search-input {
+  width: 100%; box-sizing: border-box;
+  padding: 9px 14px;
+  border: 1px solid var(--surface2);
+  border-radius: 12px;
+  background: var(--surface);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px; color: var(--text);
+  outline: none;
+}
+.ya-list { flex: 1; overflow-y: auto; padding: 4px 0 24px; }
+.ya-row {
+  display: flex; align-items: center;
+  gap: 14px;
+  padding: 8px 20px;
+  cursor: pointer;
+}
+.ya-row:active { background: var(--surface2); }
+.ya-row-art {
+  width: 44px; height: 44px; flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--surface2);
+  overflow: hidden; position: relative;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; color: var(--text3);
+}
+.ya-row-art img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
+  display: block;
+}
+.ya-row-name {
+  flex: 1; min-width: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px; font-weight: 500;
+  color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ya-row-more {
+  flex-shrink: 0;
+  background: none; border: none; padding: 8px;
+  color: var(--text2); cursor: pointer;
+}
+.ya-empty { padding: 40px 24px; text-align: center; font-size: 13px; color: var(--text3); }
+
+/* ── Artist Action Sheet ── */
+.ya-sheet {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  background: var(--bg);
+  border-radius: 18px 18px 0 0;
+  padding: 18px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+  z-index: 110;
+  transform: translateY(100%);
+  transition: transform .3s cubic-bezier(0.32, 0.72, 0, 1);
+  box-shadow: 0 -4px 24px rgba(0,0,0,0.12);
+}
+.ya-sheet.open { transform: translateY(0); }
+.ya-sheet-header { display: flex; align-items: center; gap: 14px; padding-bottom: 16px; border-bottom: 1px solid var(--surface2); }
+.ya-sheet-art {
+  width: 52px; height: 52px; flex-shrink: 0;
+  border-radius: 50%; overflow: hidden; position: relative;
+  background: var(--surface2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; color: var(--text3);
+}
+.ya-sheet-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
+.ya-sheet-name {
+  flex: 1; min-width: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px; font-weight: 700;
+  color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ya-sheet-close { background: none; border: none; padding: 6px; color: var(--text2); cursor: pointer; }
+.ya-sheet-actions {
+  display: flex; gap: 22px; justify-content: center;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--surface2);
+}
+.ya-action-cell {
+  background: none; border: none; padding: 4px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  cursor: pointer; color: var(--text);
+  font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 500;
+}
+.ya-action-circle {
+  width: 52px; height: 52px; border-radius: 50%;
+  background: var(--surface2);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text);
+}
+.ya-action-cell:active .ya-action-circle { opacity: .7; }
+.ya-sheet-menu { padding-top: 6px; }
+.ya-menu-row {
+  width: 100%;
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 4px;
+  background: none; border: none;
+  font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 500;
+  color: var(--text); text-align: left;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+.ya-menu-row:last-child { border-bottom: none; }
+.ya-menu-row:active { opacity: .6; }
+.ya-menu-icon { display: flex; align-items: center; justify-content: center; color: var(--text2); flex-shrink: 0; width: 22px; }
+.ya-menu-row.favorite-on .ya-menu-icon { color: #ff8a95; }
 .ll-caught {
   font-family: 'Playfair Display', 'Times New Roman', Georgia, serif;
   font-size: 12px;
@@ -3589,7 +3765,7 @@ main {
 <!-- Build marker — visible in the top-right corner. If you see this label
      with the latest commit hash it confirms the new shell has landed.
      Tiny enough not to disturb the layout. -->
-<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v16</div>
+<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v17</div>
 
 <!-- Drawer Overlay -->
 <div class="drawer-overlay" id="drawerOverlay"></div>
@@ -3656,6 +3832,17 @@ main {
           <div id="llContent">
             <p class="ll-caught">You're all caught up</p>
             <p class="ll-sub">Go find more stuff to add to Listen Later.</p>
+          </div>
+        </div>
+
+        <!-- Your recent artists (horizontal strip) -->
+        <div class="ha-section" id="haArtistsSection">
+          <div class="ha-artists-header">
+            <h2 class="ha-artists-title">Your recent artists</h2>
+            <button class="ha-more" onclick="openYourArtists()">MORE</button>
+          </div>
+          <div class="ha-artists-scroll" id="haArtistsContainer">
+            <div class="ha-empty">최근 들은 아티스트가 없습니다</div>
           </div>
         </div>
       </div>
@@ -4638,6 +4825,80 @@ main {
   <div class="ll-list-wrap" id="llList"></div>
 </div>
 
+<!-- Your recent artists full-screen view -->
+<div class="ya-screen" id="yaScreen">
+  <div class="ya-top-bar">
+    <button class="ra-back-btn" onclick="closeYourArtists()" aria-label="뒤로">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+    </button>
+    <h1 class="ya-screen-title">Your recent artists</h1>
+    <button class="ra-search-btn" aria-label="검색" onclick="yaToggleSearch()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+    </button>
+  </div>
+  <div class="ya-search-wrap" id="yaSearchWrap">
+    <input class="ya-search-input" id="yaSearchInput" placeholder="아티스트 검색…">
+  </div>
+  <div class="ya-list" id="yaList"></div>
+</div>
+
+<!-- Artist Action Sheet (Play now / Start radio / menu) -->
+<div class="sheet-backdrop" id="yaSheetBackdrop" onclick="closeYaArtistSheet()"></div>
+<div class="ya-sheet" id="yaArtistSheet">
+  <div class="ya-sheet-header">
+    <div class="ya-sheet-art">
+      <img id="yaSheetImg" alt="" style="display:none">
+      <span class="ya-sheet-fb" id="yaSheetFb">♫</span>
+    </div>
+    <div class="ya-sheet-name" id="yaSheetName"></div>
+    <button class="ya-sheet-close" onclick="closeYaArtistSheet()" aria-label="닫기">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+  </div>
+  <div class="ya-sheet-actions">
+    <button class="ya-action-cell" onclick="yaSheetPlayNow()">
+      <div class="ya-action-circle">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+      </div>
+      <span>Play now</span>
+    </button>
+    <button class="ya-action-cell" onclick="yaSheetStartRadio()">
+      <div class="ya-action-circle">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="2"/>
+          <path d="M8.5 8.5a5 5 0 0 0 0 7"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/>
+          <path d="M5.5 5.5a9 9 0 0 0 0 13"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/>
+        </svg>
+      </div>
+      <span>Start radio</span>
+    </button>
+  </div>
+  <div class="ya-sheet-menu">
+    <button class="ya-menu-row" onclick="yaSheetToggleFavorite()">
+      <span class="ya-menu-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></span>
+      <span class="ya-menu-label" id="yaFavoriteLabel">Favorite</span>
+    </button>
+    <button class="ya-menu-row" onclick="yaSheetListenLater()">
+      <span class="ya-menu-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="12" r="7"/><polyline points="11 8 11 12 13.5 13.5"/><line x1="18" y1="5" x2="22" y2="5"/><line x1="20" y1="3" x2="20" y2="7"/></svg></span>
+      <span class="ya-menu-label">Listen Later</span>
+    </button>
+    <button class="ya-menu-row" onclick="yaSheetAddToTag()">
+      <span class="ya-menu-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41L13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></span>
+      <span class="ya-menu-label">Add to tag…</span>
+    </button>
+    <button class="ya-menu-row" onclick="yaSheetBan()">
+      <span class="ya-menu-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></span>
+      <span class="ya-menu-label">Ban this artist</span>
+    </button>
+  </div>
+</div>
+
 <!-- Recent Activity full-screen view -->
 <div class="ra-screen" id="recentActivityScreen">
   <div class="ra-header">
@@ -4822,9 +5083,11 @@ fetch('playlist.json')
     loadPlaylists2();
     loadDurationCache();
     loadFavorites();
+    loadRecentArtists();
     restoreState(); // localStorage에서 이전 상태 복원
     updateFpHeartIcon();
     renderListenLaterCard();
+    renderHomeArtists();
     if (window.innerWidth >= 768) {
       // 데스크톱: 복원된 폴더 또는 첫 폴더 선택
       if (currentFolder !== null && playlist[currentFolder]) selectFolder(currentFolder);
@@ -5120,6 +5383,9 @@ function playCurrent() {
   setPlayIcons(true);
   highlightPlaying(fn);
   addToRecent(fn, currentFolder);
+  // Recent artists: bump whichever folder owns this filename
+  const owningIdx = lookupFolderIdxByFn(fn);
+  if (owningIdx >= 0) addRecentArtist(playlist[owningIdx].folder);
   // Mark as played in Listen Later (if present)
   const llIdx = listenLater.findIndex(r => r.fn === fn);
   if (llIdx >= 0 && !listenLater[llIdx].played) {
@@ -7422,6 +7688,297 @@ function llCardPlay(i) {
   playFromFolder(fi, si);
 }
 
+// ── Recent artists ──
+// Tracks the most-recently-played artist folders for the home strip and the
+// "Your recent artists" full-screen view. Banned artists are kept out.
+let recentArtists = [];   // [{ folder, lastPlayedAt }]
+let bannedArtists = [];   // [folderName, ...]
+let artistFavorites = []; // [folderName, ...]
+
+function loadRecentArtists() {
+  try { const v = localStorage.getItem('fg_recentArtists'); if (v) recentArtists = JSON.parse(v); } catch(_) {}
+  try { const v = localStorage.getItem('fg_bannedArtists'); if (v) bannedArtists = JSON.parse(v); } catch(_) {}
+  try { const v = localStorage.getItem('fg_artistFavorites'); if (v) artistFavorites = JSON.parse(v); } catch(_) {}
+}
+function saveRecentArtists()   { try { localStorage.setItem('fg_recentArtists',   JSON.stringify(recentArtists.slice(0, 100))); } catch(_) {} }
+function saveBannedArtists()   { try { localStorage.setItem('fg_bannedArtists',   JSON.stringify(bannedArtists));   } catch(_) {} }
+function saveArtistFavorites() { try { localStorage.setItem('fg_artistFavorites', JSON.stringify(artistFavorites)); } catch(_) {} }
+
+function isArtistBanned(folder)    { return bannedArtists.includes(folder); }
+function isArtistFavorite(folder)  { return artistFavorites.includes(folder); }
+function toggleArtistFavorite(folder) {
+  const i = artistFavorites.indexOf(folder);
+  if (i >= 0) artistFavorites.splice(i, 1); else artistFavorites.unshift(folder);
+  saveArtistFavorites();
+  return i < 0;
+}
+
+function addRecentArtist(folder) {
+  if (!folder || isArtistBanned(folder)) return;
+  const i = recentArtists.findIndex(r => r.folder === folder);
+  if (i >= 0) recentArtists.splice(i, 1);
+  recentArtists.unshift({ folder, lastPlayedAt: Date.now() });
+  if (recentArtists.length > 100) recentArtists.pop();
+  saveRecentArtists();
+  if (typeof renderHomeArtists === 'function') renderHomeArtists();
+}
+
+// Visible artists for the strip / full-screen list: recentArtists minus
+// any that have been banned since (defensive — addRecentArtist also
+// filters, but a ban performed after the entry was recorded would leave
+// stragglers).
+function getVisibleArtists() {
+  return recentArtists.filter(r => !isArtistBanned(r.folder));
+}
+
+function renderHomeArtists() {
+  const container = document.getElementById('haArtistsContainer');
+  if (!container) return;
+  const data = getVisibleArtists().slice(0, 20);
+  if (!data.length) {
+    container.innerHTML = `<div class="ha-empty">최근 들은 아티스트가 없습니다</div>`;
+    return;
+  }
+  container.innerHTML = data.map((r, i) => {
+    const initial = (r.folder || '?').trim().charAt(0).toUpperCase();
+    return `<div class="ha-artist-card" onclick="haArtistCardClick(${i})">
+      <div class="ha-artist-circle">
+        <img id="ha-art-img-${i}" alt="" style="display:none">
+        <span class="ha-artist-fb">${esc(initial)}</span>
+      </div>
+      <div class="ha-artist-name">${esc(r.folder)}</div>
+    </div>`;
+  }).join('');
+  data.forEach(async (r, i) => {
+    const img = document.getElementById(`ha-art-img-${i}`);
+    if (!img) return;
+    try {
+      const urls = await loadArtistImages(r.folder);
+      if (!urls || !urls.length) return;
+      const url = pickArtistImage(r.folder, urls);
+      if (!url) return;
+      img.onload = () => {
+        img.style.display = 'block';
+        const fb = img.parentElement && img.parentElement.querySelector('.ha-artist-fb');
+        if (fb) fb.style.display = 'none';
+      };
+      img.src = url;
+    } catch(_) {}
+  });
+}
+
+function haArtistCardClick(idx) {
+  const r = getVisibleArtists()[idx];
+  if (!r) return;
+  navigateToArtist(r.folder);
+}
+function navigateToArtist(folder) {
+  const fi = playlist.findIndex(p => p.folder === folder);
+  if (fi < 0) return;
+  selectFolder(fi);
+}
+
+// ── Your recent artists — full-screen view ──
+let yaSearchQuery = '';
+function openYourArtists() {
+  yaSearchQuery = '';
+  const wrap = document.getElementById('yaSearchWrap');
+  const input = document.getElementById('yaSearchInput');
+  if (wrap) wrap.classList.remove('open');
+  if (input) input.value = '';
+  renderYaList();
+  document.getElementById('yaScreen').classList.add('open');
+}
+function closeYourArtists() {
+  document.getElementById('yaScreen').classList.remove('open');
+}
+function yaToggleSearch() {
+  const wrap = document.getElementById('yaSearchWrap');
+  if (!wrap) return;
+  const isOpen = wrap.classList.toggle('open');
+  if (isOpen) {
+    const input = document.getElementById('yaSearchInput');
+    if (input) setTimeout(() => input.focus(), 220);
+  } else {
+    yaSearchQuery = '';
+    const input = document.getElementById('yaSearchInput');
+    if (input) input.value = '';
+    renderYaList();
+  }
+}
+function renderYaList() {
+  const list = document.getElementById('yaList');
+  if (!list) return;
+  const q = yaSearchQuery.trim().toLowerCase();
+  const all = getVisibleArtists();
+  const data = q ? all.filter(r => (r.folder || '').toLowerCase().includes(q)) : all;
+  if (!data.length) {
+    list.innerHTML = `<div class="ya-empty">${q ? '검색 결과가 없습니다' : '최근 들은 아티스트가 없습니다'}</div>`;
+    return;
+  }
+  list.innerHTML = data.map((r, i) => {
+    const initial = (r.folder || '?').trim().charAt(0).toUpperCase();
+    return `<div class="ya-row" onclick="yaRowClick(${i})">
+      <div class="ya-row-art">
+        <img id="ya-row-img-${i}" alt="" style="display:none">
+        <span class="ya-row-fb">${esc(initial)}</span>
+      </div>
+      <div class="ya-row-name">${esc(r.folder)}</div>
+      <button class="ya-row-more" onclick="event.stopPropagation();yaRowMoreClick(${i})" aria-label="더보기">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/>
+        </svg>
+      </button>
+    </div>`;
+  }).join('');
+  data.forEach(async (r, i) => {
+    const img = document.getElementById(`ya-row-img-${i}`);
+    if (!img) return;
+    try {
+      const urls = await loadArtistImages(r.folder);
+      if (!urls || !urls.length) return;
+      const url = pickArtistImage(r.folder, urls);
+      if (!url) return;
+      img.onload = () => {
+        img.style.display = 'block';
+        const fb = img.parentElement && img.parentElement.querySelector('.ya-row-fb');
+        if (fb) fb.style.display = 'none';
+      };
+      img.src = url;
+    } catch(_) {}
+  });
+}
+function yaCurrentList() {
+  const q = yaSearchQuery.trim().toLowerCase();
+  const all = getVisibleArtists();
+  return q ? all.filter(r => (r.folder || '').toLowerCase().includes(q)) : all;
+}
+function yaRowClick(i) {
+  const r = yaCurrentList()[i];
+  if (!r) return;
+  closeYourArtists();
+  navigateToArtist(r.folder);
+}
+function yaRowMoreClick(i) {
+  const r = yaCurrentList()[i];
+  if (!r) return;
+  openYaArtistSheet(r.folder);
+}
+
+// Search input binding (defer until DOM ready)
+window.addEventListener('load', () => {
+  const input = document.getElementById('yaSearchInput');
+  if (!input) return;
+  ['input','keyup','compositionend','change'].forEach(ev => input.addEventListener(ev, () => {
+    yaSearchQuery = input.value || '';
+    renderYaList();
+  }));
+});
+
+// ── Artist Action Sheet ──
+let yaSheetFolder = null;
+async function openYaArtistSheet(folder) {
+  yaSheetFolder = folder;
+  document.getElementById('yaSheetName').textContent = folder;
+  document.getElementById('yaSheetFb').textContent = (folder || '?').trim().charAt(0).toUpperCase();
+  const img = document.getElementById('yaSheetImg');
+  img.style.display = 'none';
+  img.removeAttribute('src');
+  try {
+    const urls = await loadArtistImages(folder);
+    if (urls && urls.length) {
+      const url = pickArtistImage(folder, urls);
+      if (url) {
+        img.onload = () => {
+          img.style.display = 'block';
+          const fb = document.getElementById('yaSheetFb');
+          if (fb) fb.style.display = 'none';
+        };
+        img.src = url;
+      }
+    }
+  } catch(_) {}
+  // Favorite label
+  const favLabel = document.getElementById('yaFavoriteLabel');
+  const favRow = favLabel && favLabel.closest('.ya-menu-row');
+  if (isArtistFavorite(folder)) {
+    if (favLabel) favLabel.textContent = 'Remove from favorites';
+    if (favRow) favRow.classList.add('favorite-on');
+  } else {
+    if (favLabel) favLabel.textContent = 'Favorite';
+    if (favRow) favRow.classList.remove('favorite-on');
+  }
+  document.getElementById('yaSheetBackdrop').classList.add('open');
+  document.getElementById('yaArtistSheet').classList.add('open');
+}
+function closeYaArtistSheet() {
+  document.getElementById('yaSheetBackdrop').classList.remove('open');
+  document.getElementById('yaArtistSheet').classList.remove('open');
+  yaSheetFolder = null;
+}
+function yaSheetPlayNow() {
+  if (!yaSheetFolder) return;
+  const fi = playlist.findIndex(p => p.folder === yaSheetFolder);
+  closeYaArtistSheet();
+  if (fi < 0) return;
+  playFromFolder(fi, 0);
+}
+function yaSheetStartRadio() {
+  // Stub for now — picks a random track from the artist as a single-song
+  // "radio". A proper radio that mixes similar artists is future work.
+  if (!yaSheetFolder) return;
+  const fi = playlist.findIndex(p => p.folder === yaSheetFolder);
+  closeYaArtistSheet();
+  if (fi < 0 || !playlist[fi].songs.length) return;
+  const songs = playlist[fi].songs;
+  const startIdx = Math.floor(Math.random() * songs.length);
+  shuffle = true;
+  [document.getElementById('fpShuffle'), document.getElementById('dShuffle')]
+    .forEach(b => b && b.classList.toggle('active', true));
+  playFromFolder(fi, startIdx);
+}
+function yaSheetToggleFavorite() {
+  if (!yaSheetFolder) return;
+  const nowFav = toggleArtistFavorite(yaSheetFolder);
+  showToast(nowFav ? 'Added to Favorites' : 'Removed from Favorites', yaSheetFolder);
+  closeYaArtistSheet();
+}
+function yaSheetListenLater() {
+  if (!yaSheetFolder) return;
+  const fi = playlist.findIndex(p => p.folder === yaSheetFolder);
+  if (fi >= 0 && playlist[fi].songs.length) {
+    let added = 0;
+    playlist[fi].songs.forEach(fn => {
+      if (!isInListenLater(fn)) {
+        listenLater.unshift({ fn, folderIdx: fi, played: false, addedAt: Date.now() });
+        added++;
+      }
+    });
+    saveListenLater();
+    renderListenLaterCard();
+    showToast(added ? `Added ${added} song${added === 1 ? '' : 's'} to Listen Later` : 'Already in Listen Later', yaSheetFolder);
+  }
+  closeYaArtistSheet();
+}
+function yaSheetAddToTag() {
+  // Placeholder — tag system not yet implemented.
+  showToast('Tags are coming soon', yaSheetFolder || '');
+  closeYaArtistSheet();
+}
+function yaSheetBan() {
+  if (!yaSheetFolder) return;
+  const folder = yaSheetFolder;
+  if (!bannedArtists.includes(folder)) bannedArtists.push(folder);
+  saveBannedArtists();
+  // Drop from recent so the strip / list refreshes
+  recentArtists = recentArtists.filter(r => r.folder !== folder);
+  saveRecentArtists();
+  closeYaArtistSheet();
+  renderHomeArtists();
+  renderYaList();
+  showToast('Artist hidden from recents', folder);
+}
+
 // ── Favorites ──
 let favorites = [];
 function loadFavorites() {
@@ -8518,6 +9075,8 @@ function switchTab(tabName, showFeed = true) {
   if (plDetailScreen && plDetailScreen.classList.contains('open')) {
     plDetailScreen.classList.remove('open');
   }
+  const yaScreen = document.getElementById('yaScreen');
+  if (yaScreen && yaScreen.classList.contains('open')) yaScreen.classList.remove('open');
   const panels = { home: 'tabHome', search: 'tabSearch', library: 'tabLibrary', audio: 'tabAudio' };
   Object.entries(panels).forEach(([name, id]) => {
     const el = document.getElementById(id);
