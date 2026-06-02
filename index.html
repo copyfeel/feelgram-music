@@ -3829,7 +3829,7 @@ main {
 <!-- Build marker — visible in the top-right corner. If you see this label
      with the latest commit hash it confirms the new shell has landed.
      Tiny enough not to disturb the layout. -->
-<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v20</div>
+<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v21</div>
 
 <!-- Drawer Overlay -->
 <div class="drawer-overlay" id="drawerOverlay"></div>
@@ -4404,7 +4404,7 @@ main {
       </span>
       Remove from playlist
     </button>
-    <button class="as-menu-item">
+    <button class="as-menu-item" onclick="asAddToTag()">
       <span class="as-menu-item-icon">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
@@ -8459,6 +8459,21 @@ function asAddToPlaylist() {
   const { fn, folderIdx } = asCurrentSong;
   closeSongMenu();
   setTimeout(() => openAddToPlaylistSheet(fn, folderIdx), 280);
+}
+// Re-use the artist tag sheet from the song action sheet (full player,
+// Listen Later row menu, Recent Activity menu). Tags are stored per
+// artist folder, so we resolve the song's owning folder and hand off
+// to the existing openTagSheet implementation.
+function asAddToTag() {
+  if (!asCurrentSong) return;
+  const { fn, folderIdx } = asCurrentSong;
+  const idx = (folderIdx != null && playlist[folderIdx] && playlist[folderIdx].songs.includes(fn))
+    ? folderIdx
+    : lookupFolderIdxByFn(fn);
+  const folder = (idx != null && idx >= 0 && playlist[idx]) ? playlist[idx].folder : '';
+  if (!folder) return;
+  closeSongMenu();
+  setTimeout(() => openTagSheet(folder), 240);
 }
 function openAddToPlaylistSheet(fn, folderIdx) {
   pendingAddSong = { fn, folderIdx };
