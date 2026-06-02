@@ -3854,7 +3854,7 @@ main {
 <!-- Build marker — visible in the top-right corner. If you see this label
      with the latest commit hash it confirms the new shell has landed.
      Tiny enough not to disturb the layout. -->
-<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v23</div>
+<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v24</div>
 
 <!-- Drawer Overlay -->
 <div class="drawer-overlay" id="drawerOverlay"></div>
@@ -7929,10 +7929,26 @@ function navigateToArtist(folder) {
   selectFolder(fi);
 }
 
+// Look at recentPlays for the most recently played song that belongs to
+// `folder`. Used as the album-art fallback for synthetic folders like
+// '기타' / 'Jazz' where there's no artist photo — we want the cover of
+// the track the user actually listened to, not just the folder's first
+// song in alphabetical order.
+function findRecentSongInFolder(folder) {
+  for (const r of recentPlays) {
+    if (!r || r.type === 'playlist' || !r.fn) continue;
+    const idx = resolveFolderIdx(r);
+    if (idx >= 0 && playlist[idx] && playlist[idx].folder === folder) return r.fn;
+  }
+  return null;
+}
+
 // Resolve a thumbnail for an artist row/circle. Order of preference:
 //   1) artist-thumbs/ files + TheAudioDB (loadArtistImages)
-//   2) first song's album art (loadCardArt) — used for synthetic folders
-//      like '기타' or 'Jazz' where no artist photo exists.
+//   2) most-recently-played song in this folder, else fallback to its
+//      first song. The recent-song path makes '기타' / 'Jazz' circles
+//      show the cover of whatever the user just listened to instead of
+//      a stale alphabetical default.
 async function loadArtistThumbInto(folder, img, fb) {
   if (!img) return;
   try {
@@ -7946,11 +7962,14 @@ async function loadArtistThumbInto(folder, img, fb) {
       }
     }
   } catch(_) {}
-  const fi = playlist.findIndex(p => p.folder === folder);
-  if (fi < 0 || !playlist[fi].songs.length) return;
-  const firstFn = playlist[fi].songs[0];
+  let fn = findRecentSongInFolder(folder);
+  if (!fn) {
+    const fi = playlist.findIndex(p => p.folder === folder);
+    if (fi >= 0 && playlist[fi].songs.length) fn = playlist[fi].songs[0];
+  }
+  if (!fn) return;
   img.onload = () => { img.style.display = 'block'; if (fb) fb.style.display = 'none'; };
-  loadCardArt(firstFn, img);
+  loadCardArt(fn, img);
 }
 
 // ── Your recent artists — full-screen view ──
