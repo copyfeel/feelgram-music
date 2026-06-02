@@ -2217,6 +2217,12 @@ main {
 .ll-item.played .ll-item-info {
   opacity: 0.45;
 }
+/* Artist-level entries: round avatar in both home card + full list. */
+.ll-card-art-round { border-radius: 50%; }
+.ll-card-art-round img { border-radius: 50%; }
+.ll-item-art-round { border-radius: 50%; }
+.ll-item-art-round img { border-radius: 50%; }
+.ll-item-artist .ll-item-title { font-weight: 700; }
 /* Swipe-to-delete row. The row is a positioning context whose background
    shows the Delete affordance; the inner .ll-swipe-content is the content
    that translates horizontally as the user drags. */
@@ -3823,7 +3829,7 @@ main {
 <!-- Build marker — visible in the top-right corner. If you see this label
      with the latest commit hash it confirms the new shell has landed.
      Tiny enough not to disturb the layout. -->
-<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v19</div>
+<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v20</div>
 
 <!-- Drawer Overlay -->
 <div class="drawer-overlay" id="drawerOverlay"></div>
@@ -7733,6 +7739,19 @@ function renderListenLaterCard() {
     return;
   }
   c.innerHTML = listenLater.slice(0, 3).map((r, i) => {
+    if (r.type === 'artist') {
+      // Artist-level entry — round face thumbnail + artist name only.
+      const initial = (r.folder || '?').trim().charAt(0).toUpperCase();
+      return `<div class="ll-card-item" onclick="llCardPlay(${i})">
+        <div class="ll-card-art ll-card-art-round">
+          <img id="ll-card-img-${i}" alt="" style="display:none">
+          <span class="ll-card-fb">${esc(initial)}</span>
+        </div>
+        <div class="ll-card-info">
+          <div class="ll-card-title">${esc(r.folder || '')}</div>
+        </div>
+      </div>`;
+    }
     const folder = playlist[resolveFolderIdx(r)];
     const folderName = folder ? folder.folder : '';
     const folderIcon = folder ? folder.icon : '♫';
@@ -7753,14 +7772,36 @@ function renderListenLaterCard() {
       </div>
     </div>`;
   }).join('');
-  listenLater.slice(0, 3).forEach((r, i) => {
+  listenLater.slice(0, 3).forEach(async (r, i) => {
     const img = document.getElementById(`ll-card-img-${i}`);
-    if (img) loadCardArt(r.fn, img);
+    if (!img) return;
+    if (r.type === 'artist') {
+      try {
+        const urls = await loadArtistImages(r.folder);
+        if (!urls || !urls.length) return;
+        const url = pickArtistImage(r.folder, urls);
+        if (!url) return;
+        img.onload = () => {
+          img.style.display = 'block';
+          const fb = img.parentElement && img.parentElement.querySelector('.ll-card-fb');
+          if (fb) fb.style.display = 'none';
+        };
+        img.src = url;
+      } catch(_) {}
+      return;
+    }
+    loadCardArt(r.fn, img);
   });
 }
 function llCardPlay(i) {
   const r = listenLater[i];
   if (!r) return;
+  if (r.type === 'artist') {
+    const fi = playlist.findIndex(p => p.folder === r.folder);
+    if (fi < 0 || !playlist[fi].songs.length) return;
+    playFromFolder(fi, 0);
+    return;
+  }
   const fi = resolveFolderIdx(r);
   if (fi < 0 || !playlist[fi]) return;
   const si = playlist[fi].songs.indexOf(r.fn);
@@ -8059,20 +8100,26 @@ function yaSheetToggleFavorite() {
 }
 function yaSheetListenLater() {
   if (!yaSheetFolder) return;
-  const fi = playlist.findIndex(p => p.folder === yaSheetFolder);
-  if (fi >= 0 && playlist[fi].songs.length) {
-    let added = 0;
-    playlist[fi].songs.forEach(fn => {
-      if (!isInListenLater(fn)) {
-        listenLater.unshift({ fn, folderIdx: fi, played: false, addedAt: Date.now() });
-        added++;
-      }
-    });
+  const folder = yaSheetFolder;
+  // Toggle: if the artist is already queued, remove the entry; otherwise
+  // add a single artist-level entry (NOT one-per-song).
+  const existing = listenLater.findIndex(r => r.type === 'artist' && r.folder === folder);
+  if (existing >= 0) {
+    listenLater.splice(existing, 1);
     saveListenLater();
-    renderListenLaterCard();
-    showToast(added ? `Added ${added} song${added === 1 ? '' : 's'} to Listen Later` : 'Already in Listen Later', yaSheetFolder);
+    showToast('Removed from Listen Later', folder);
+  } else {
+    listenLater.unshift({ type: 'artist', folder, played: false, addedAt: Date.now() });
+    saveListenLater();
+    showToast('Added to Listen Later', folder);
   }
+  renderListenLaterCard();
+  const llScreen = document.getElementById('listenLaterScreen');
+  if (llScreen && llScreen.classList.contains('open')) renderLlList();
   closeYaArtistSheet();
+}
+function isArtistInListenLater(folder) {
+  return listenLater.some(r => r.type === 'artist' && r.folder === folder);
 }
 function yaSheetAddToTag() {
   if (!yaSheetFolder) return;
@@ -9052,9 +9099,19 @@ function renderLlList() {
     if (!r) return `<div class="ll-bc-cell"></div>`;
     return `<div class="ll-bc-cell"><img id="ll-bc-img-${i}" alt=""></div>`;
   }).join('');
-  listenLater.slice(0, 4).forEach((r, i) => {
+  listenLater.slice(0, 4).forEach(async (r, i) => {
     const img = document.getElementById(`ll-bc-img-${i}`);
-    if (img) loadCardArt(r.fn, img);
+    if (!img) return;
+    if (r.type === 'artist') {
+      try {
+        const urls = await loadArtistImages(r.folder);
+        if (!urls || !urls.length) return;
+        const url = pickArtistImage(r.folder, urls);
+        if (url) { img.onload = () => img.classList.add('loaded'); img.src = url; }
+      } catch(_) {}
+      return;
+    }
+    loadCardArt(r.fn, img);
   });
 
   // Render list items
@@ -9075,6 +9132,39 @@ function renderLlList() {
     return;
   }
   list.innerHTML = filtered.map(({ r, i }) => {
+    if (r.type === 'artist') {
+      const initial = (r.folder || '?').trim().charAt(0).toUpperCase();
+      const cls = 'll-item ll-item-artist' + (r.played ? ' played' : '');
+      return `<div class="ll-row" data-idx="${i}" style="--idx:${i}">
+        <div class="ll-delete-bg">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+            <path d="M10 11v6"/><path d="M14 11v6"/>
+          </svg>
+          <span class="ll-delete-text">Delete</span>
+        </div>
+        <div class="${cls} ll-swipe-content" onclick="llRowClick(event, ${i})">
+          <div class="ll-item-art ll-item-art-round">
+            <img id="ll-img-${i}" alt="" style="display:none">
+            <span class="ll-item-art-fb">${esc(initial)}</span>
+          </div>
+          <div class="ll-item-info">
+            <div class="ll-item-title">${esc(r.folder || '')}</div>
+          </div>
+          <button class="ll-item-play" onclick="event.stopPropagation();llPlayArtist(${i})" aria-label="아티스트 전곡 재생">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+          </button>
+          <button class="ll-item-more" onclick="event.stopPropagation();llMoreClick(${i})" aria-label="더보기">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <circle cx="5" cy="12" r="1.7"/>
+              <circle cx="12" cy="12" r="1.7"/>
+              <circle cx="19" cy="12" r="1.7"/>
+            </svg>
+          </button>
+        </div>
+      </div>`;
+    }
     const folder = playlist[resolveFolderIdx(r)];
     const folderName = folder ? folder.folder : '';
     const folderIcon = folder ? folder.icon : '♫';
@@ -9082,9 +9172,6 @@ function renderLlList() {
     const cls = 'll-item' + (r.played ? ' played' : '');
     const added = relTime(r.addedAt);
     const subText = added ? `${folderName} · ${added}` : folderName;
-    // Each item wraps its content in `.ll-swipe-content` so we can translateX it
-    // independently. The red "Delete" panel sits behind on the left, revealed as
-    // the content slides right.
     return `<div class="ll-row" data-idx="${i}" style="--idx:${i}">
       <div class="ll-delete-bg">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -9113,9 +9200,25 @@ function renderLlList() {
       </div>
     </div>`;
   }).join('');
-  listenLater.forEach((r, i) => {
+  listenLater.forEach(async (r, i) => {
     const img = document.getElementById(`ll-img-${i}`);
-    if (img) loadCardArt(r.fn, img);
+    if (!img) return;
+    if (r.type === 'artist') {
+      try {
+        const urls = await loadArtistImages(r.folder);
+        if (!urls || !urls.length) return;
+        const url = pickArtistImage(r.folder, urls);
+        if (!url) return;
+        img.onload = () => {
+          img.style.display = 'block';
+          const fb = img.parentElement && img.parentElement.querySelector('.ll-item-art-fb');
+          if (fb) fb.style.display = 'none';
+        };
+        img.src = url;
+      } catch(_) {}
+      return;
+    }
+    loadCardArt(r.fn, img);
   });
   attachLlSwipeHandlers();
 }
@@ -9210,6 +9313,7 @@ function llDeleteAt(idx) {
 function llPlayItem(i) {
   const r = listenLater[i];
   if (!r) return;
+  if (r.type === 'artist') { llPlayArtist(i); return; }
   const fi = resolveFolderIdx(r);
   if (fi < 0 || !playlist[fi]) return;
   const si = playlist[fi].songs.indexOf(r.fn);
@@ -9217,9 +9321,20 @@ function llPlayItem(i) {
   selectFolder(fi);
   playFromFolder(fi, si);
 }
+function llPlayArtist(i) {
+  const r = listenLater[i];
+  if (!r || r.type !== 'artist') return;
+  const fi = playlist.findIndex(p => p.folder === r.folder);
+  if (fi < 0 || !playlist[fi].songs.length) return;
+  // Mark this artist entry as played once the user kicks it off.
+  if (!r.played) { r.played = true; saveListenLater(); renderListenLaterCard(); renderLlList(); }
+  playFromFolder(fi, 0);
+}
 function llMoreClick(i) {
   const r = listenLater[i];
-  if (r) openSongMenu(r.fn, resolveFolderIdx(r));
+  if (!r) return;
+  if (r.type === 'artist') { openYaArtistSheet(r.folder); return; }
+  openSongMenu(r.fn, resolveFolderIdx(r));
 }
 
 async function loadCardArt(fn, imgEl) {
