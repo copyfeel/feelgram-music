@@ -1,14 +1,62 @@
 [
-  "[영화] 4월 이야기 - 비의 기적(Iwai Shunji- April Story, 1998 OST).mp4",
-  "[영화] 8월의 크리스마스.mp4",
-  "[영화] Once Upon a Time in America.mp4",
-  "[영화] 기쿠지로의 여름 OST(1999) - SUMMER OF KIKUJIRO.mp4",
-  "[영화] 다만, 널 사랑하고 있어(ただ、君を愛してる - Heavenly Forest, 2006).mp4",
-  "[영화] 시네마 천국 OST(1988) - Cinema Paradiso.mp4",
-  "[영화] 연애시대 - 결혼 기념일 그만 챙기자ㅣEp.1-1.mp4",
-  "[영화] 유콜잇러브 OST(1988) - You call it love.mp4",
-  "[영화] 접속 (1997).mp4",
-  "[영화] 죽은 시인의 사회 - Dead Poets Society.mp4",
-  "[영화] 카모메 식당.mp4",
-  "[영화] 티파니에서 아침을 - Breakfast at Tiffany's.mp4"
+  {
+    "title": "[영화] 4월 이야기 - 비의 기적(Iwai Shunji- April Story, 1998 OST)",
+    "video": "soundtrack-01.mp4",
+    "poster": "soundtrack-01.jpg"
+  },
+  {
+    "title": "[영화] 8월의 크리스마스",
+    "video": "soundtrack-02.mp4",
+    "poster": "soundtrack-02.png"
+  },
+  {
+    "title": "[영화] Once Upon a Time in America",
+    "video": "soundtrack-03.mp4",
+    "poster": "soundtrack-03.jpg"
+  },
+  {
+    "title": "[영화] 기쿠지로의 여름 OST(1999) - SUMMER OF KIKUJIRO",
+    "video": "soundtrack-04.mp4",
+    "poster": "soundtrack-04.webp"
+  },
+  {
+    "title": "[영화] 다만, 널 사랑하고 있어(ただ、君を愛してる - Heavenly Forest, 2006)",
+    "video": "soundtrack-05.mp4",
+    "poster": "soundtrack-05.jpg"
+  },
+  {
+    "title": "[영화] 시네마 천국 OST(1988) - Cinema Paradiso",
+    "video": "soundtrack-06.mp4",
+    "poster": "soundtrack-06.webp"
+  },
+  {
+    "title": "[영화] 연애시대 - 결혼 기념일 그만 챙기자ㅣEp.1-1",
+    "video": "soundtrack-07.mp4",
+    "poster": "soundtrack-07.jpg"
+  },
+  {
+    "title": "[영화] 유콜잇러브 OST(1988) - You call it love",
+    "video": "soundtrack-08.mp4",
+    "poster": "soundtrack-08.jpg"
+  },
+  {
+    "title": "[영화] 접속 (1997)",
+    "video": "soundtrack-09.mp4",
+    "poster": "soundtrack-09.webp"
+  },
+  {
+    "title": "[영화] 죽은 시인의 사회 - Dead Poets Society",
+    "video": "soundtrack-10.mp4",
+    "poster": "soundtrack-10.png"
+  },
+  {
+    "title": "[영화] 카모메 식당",
+    "video": "soundtrack-11.mp4",
+    "poster": "soundtrack-11.webp"
+  },
+  {
+    "title": "[영화] 티파니에서 아침을 - Breakfast at Tiffany's",
+    "video": "soundtrack-12.mp4",
+    "poster": "soundtrack-12.jpg"
+  }
 ]

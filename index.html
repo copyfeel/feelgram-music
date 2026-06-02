@@ -3969,7 +3969,7 @@ main {
 <!-- Build marker — visible in the top-right corner. If you see this label
      with the latest commit hash it confirms the new shell has landed.
      Tiny enough not to disturb the layout. -->
-<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v26</div>
+<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v27</div>
 
 <!-- Drawer Overlay -->
 <div class="drawer-overlay" id="drawerOverlay"></div>
@@ -8099,49 +8099,26 @@ function navigateToArtist(folder) {
 }
 
 // ── Favorite Soundtrack ──
-let soundtrack = [];
+// Media files are hosted on GitHub Releases (Netlify can't serve large
+// mp4s reliably). soundtrack.json now records the original Korean title
+// next to the slugged filenames (soundtrack-NN.*) that match the release
+// assets, so the UI keeps showing the human title while the URL stays
+// boring enough for GitHub's asset hosting to accept.
+const SOUNDTRACK_BASE_URL = 'https://github.com/copyfeel/feelgram-music/releases/download/soundtrack-v1/';
+let soundtrack = []; // [{ title, video, poster }]
+
 async function loadSoundtrack() {
   try {
     const res = await fetch('soundtrack.json');
     if (res.ok) {
       const list = await res.json();
-      soundtrack = (Array.isArray(list) ? list : []).slice().sort(sortSoundtrack);
+      if (Array.isArray(list)) soundtrack = list;
     }
   } catch(_) {}
   renderSoundtrackStrip();
 }
-// Korean first, then everything else; within each group localeCompare.
-function sortSoundtrack(a, b) {
-  const stripA = a.replace(/^\[영화\]\s*/, '').replace(/\.(mp4|mov|m4v|webm)$/i, '').trim();
-  const stripB = b.replace(/^\[영화\]\s*/, '').replace(/\.(mp4|mov|m4v|webm)$/i, '').trim();
-  const isKr = (s) => /[가-힣]/.test(s.charAt(0));
-  const kA = isKr(stripA), kB = isKr(stripB);
-  if (kA && !kB) return -1;
-  if (!kA && kB) return 1;
-  return stripA.localeCompare(stripB, 'ko');
-}
-function soundtrackTitle(fn) {
-  return fn.replace(/\.(mp4|mov|m4v|webm)$/i, '');
-}
-function soundtrackBaseName(fn) {
-  return fn.replace(/\.(mp4|mov|m4v|webm)$/i, '');
-}
-function soundtrackVideoUrl(fn) {
-  return 'music/soundtrack/' + encodeURIComponent(fn);
-}
-
-// Try the user's poster image alongside the video. Same base name with
-// any of jpg/jpeg/png/webp extensions; first one that 200s wins.
-async function loadSoundtrackPoster(base, img) {
-  const exts = ['jpg', 'jpeg', 'png', 'webp'];
-  for (const ext of exts) {
-    const url = 'music/soundtrack/' + encodeURIComponent(base + '.' + ext);
-    try {
-      const res = await fetch(url, { method: 'HEAD' });
-      if (res.ok) { img.src = url; return; }
-    } catch(_) {}
-  }
-}
+function soundtrackVideoUrl(entry) { return SOUNDTRACK_BASE_URL + entry.video; }
+function soundtrackPosterUrl(entry) { return entry.poster ? SOUNDTRACK_BASE_URL + entry.poster : ''; }
 
 function renderSoundtrackStrip() {
   const container = document.getElementById('haSoundtrackContainer');
@@ -8150,38 +8127,31 @@ function renderSoundtrackStrip() {
     container.innerHTML = `<div class="ha-empty">사운드트랙이 없습니다</div>`;
     return;
   }
-  container.innerHTML = soundtrack.map((fn, i) => {
-    const title = soundtrackTitle(fn);
+  container.innerHTML = soundtrack.map((entry, i) => {
+    const poster = soundtrackPosterUrl(entry);
     return `<div class="ha-st-card" onclick="openSoundtrackPlayer(${i})">
-      <img id="ha-st-img-${i}" alt="">
+      ${poster ? `<img src="${esc(poster)}" alt="">` : ''}
       <div class="ha-st-card-overlay">
-        <span class="ha-st-card-title">${esc(title)}</span>
+        <span class="ha-st-card-title">${esc(entry.title)}</span>
       </div>
       <span class="ha-st-card-play" aria-hidden="true">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
       </span>
     </div>`;
   }).join('');
-  soundtrack.forEach((fn, i) => {
-    const img = document.getElementById(`ha-st-img-${i}`);
-    if (img) loadSoundtrackPoster(soundtrackBaseName(fn), img);
-  });
 }
 
 // ── Video player modal ──
 function openSoundtrackPlayer(idx) {
-  const fn = soundtrack[idx];
-  if (!fn) return;
-  // Pause main audio so audio/video don't fight for the session.
+  const entry = soundtrack[idx];
+  if (!entry) return;
   try { audio.pause(); } catch(_) {}
   const modal = document.getElementById('soundtrackPlayer');
   const video = document.getElementById('soundtrackVideo');
   const titleEl = document.getElementById('soundtrackTitle');
-  titleEl.textContent = soundtrackTitle(fn);
-  video.src = soundtrackVideoUrl(fn);
+  titleEl.textContent = entry.title;
+  video.src = soundtrackVideoUrl(entry);
   modal.classList.add('open');
-  // Try to autoplay; iOS may require muted autoplay so leave sound on
-  // and let the user tap play if autoplay is rejected.
   video.play().catch(() => {});
 }
 function closeSoundtrackPlayer() {
@@ -8208,22 +8178,18 @@ function renderSoundtrackList() {
     list.innerHTML = `<div class="ha-empty">사운드트랙이 없습니다</div>`;
     return;
   }
-  list.innerHTML = soundtrack.map((fn, i) => {
-    const title = soundtrackTitle(fn);
+  list.innerHTML = soundtrack.map((entry, i) => {
+    const poster = soundtrackPosterUrl(entry);
     return `<div class="ha-st-card" style="width:100%;height:200px" onclick="openSoundtrackPlayer(${i})">
-      <img id="fs-st-img-${i}" alt="">
+      ${poster ? `<img src="${esc(poster)}" alt="">` : ''}
       <div class="ha-st-card-overlay">
-        <span class="ha-st-card-title" style="font-size:15px">${esc(title)}</span>
+        <span class="ha-st-card-title" style="font-size:15px">${esc(entry.title)}</span>
       </div>
       <span class="ha-st-card-play" aria-hidden="true">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
       </span>
     </div>`;
   }).join('');
-  soundtrack.forEach((fn, i) => {
-    const img = document.getElementById(`fs-st-img-${i}`);
-    if (img) loadSoundtrackPoster(soundtrackBaseName(fn), img);
-  });
 }
 
 // Look at recentPlays for the most recently played song that belongs to
