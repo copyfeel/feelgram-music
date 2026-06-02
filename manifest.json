@@ -3,7 +3,7 @@
   "short_name": "Feelgram",
   "description": "Personal music player by Copy — built as a standalone PWA.",
   "categories": ["music", "entertainment", "lifestyle"],
-  "id": "https://feelgram-music.netlify.app/",
+  "id": "https://feelgram-music.netlify.app/?source=pwa",
   "start_url": "https://feelgram-music.netlify.app/?source=pwa",
   "scope": "https://feelgram-music.netlify.app/",
   "display": "standalone",

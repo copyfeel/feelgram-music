@@ -3854,7 +3854,7 @@ main {
 <!-- Build marker — visible in the top-right corner. If you see this label
      with the latest commit hash it confirms the new shell has landed.
      Tiny enough not to disturb the layout. -->
-<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v22</div>
+<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v23</div>
 
 <!-- Drawer Overlay -->
 <div class="drawer-overlay" id="drawerOverlay"></div>
@@ -7797,22 +7797,12 @@ function renderListenLaterCard() {
       </div>
     </div>`;
   }).join('');
-  listenLater.slice(0, 3).forEach(async (r, i) => {
+  listenLater.slice(0, 3).forEach((r, i) => {
     const img = document.getElementById(`ll-card-img-${i}`);
     if (!img) return;
     if (r.type === 'artist') {
-      try {
-        const urls = await loadArtistImages(r.folder);
-        if (!urls || !urls.length) return;
-        const url = pickArtistImage(r.folder, urls);
-        if (!url) return;
-        img.onload = () => {
-          img.style.display = 'block';
-          const fb = img.parentElement && img.parentElement.querySelector('.ll-card-fb');
-          if (fb) fb.style.display = 'none';
-        };
-        img.src = url;
-      } catch(_) {}
+      const fb = img.parentElement && img.parentElement.querySelector('.ll-card-fb');
+      loadArtistThumbInto(r.folder, img, fb);
       return;
     }
     loadCardArt(r.fn, img);
@@ -7920,21 +7910,11 @@ function renderHomeArtists() {
       <div class="ha-artist-name">${esc(r.folder)}</div>
     </div>`;
   }).join('');
-  data.forEach(async (r, i) => {
+  data.forEach((r, i) => {
     const img = document.getElementById(`ha-art-img-${i}`);
     if (!img) return;
-    try {
-      const urls = await loadArtistImages(r.folder);
-      if (!urls || !urls.length) return;
-      const url = pickArtistImage(r.folder, urls);
-      if (!url) return;
-      img.onload = () => {
-        img.style.display = 'block';
-        const fb = img.parentElement && img.parentElement.querySelector('.ha-artist-fb');
-        if (fb) fb.style.display = 'none';
-      };
-      img.src = url;
-    } catch(_) {}
+    const fb = img.parentElement && img.parentElement.querySelector('.ha-artist-fb');
+    loadArtistThumbInto(r.folder, img, fb);
   });
 }
 
@@ -7947,6 +7927,30 @@ function navigateToArtist(folder) {
   const fi = playlist.findIndex(p => p.folder === folder);
   if (fi < 0) return;
   selectFolder(fi);
+}
+
+// Resolve a thumbnail for an artist row/circle. Order of preference:
+//   1) artist-thumbs/ files + TheAudioDB (loadArtistImages)
+//   2) first song's album art (loadCardArt) — used for synthetic folders
+//      like '기타' or 'Jazz' where no artist photo exists.
+async function loadArtistThumbInto(folder, img, fb) {
+  if (!img) return;
+  try {
+    const urls = await loadArtistImages(folder);
+    if (urls && urls.length) {
+      const url = pickArtistImage(folder, urls);
+      if (url) {
+        img.onload = () => { img.style.display = 'block'; if (fb) fb.style.display = 'none'; };
+        img.src = url;
+        return;
+      }
+    }
+  } catch(_) {}
+  const fi = playlist.findIndex(p => p.folder === folder);
+  if (fi < 0 || !playlist[fi].songs.length) return;
+  const firstFn = playlist[fi].songs[0];
+  img.onload = () => { img.style.display = 'block'; if (fb) fb.style.display = 'none'; };
+  loadCardArt(firstFn, img);
 }
 
 // ── Your recent artists — full-screen view ──
@@ -8012,21 +8016,11 @@ function renderYaList() {
       </div>
     </div>`;
   }).join('');
-  data.forEach(async (r, i) => {
+  data.forEach((r, i) => {
     const img = document.getElementById(`ya-row-img-${i}`);
     if (!img) return;
-    try {
-      const urls = await loadArtistImages(r.folder);
-      if (!urls || !urls.length) return;
-      const url = pickArtistImage(r.folder, urls);
-      if (!url) return;
-      img.onload = () => {
-        img.style.display = 'block';
-        const fb = img.parentElement && img.parentElement.querySelector('.ya-row-fb');
-        if (fb) fb.style.display = 'none';
-      };
-      img.src = url;
-    } catch(_) {}
+    const fb = img.parentElement && img.parentElement.querySelector('.ya-row-fb');
+    loadArtistThumbInto(r.folder, img, fb);
   });
   attachYaSwipeHandlers();
 }
@@ -8127,27 +8121,16 @@ window.addEventListener('load', () => {
 
 // ── Artist Action Sheet ──
 let yaSheetFolder = null;
-async function openYaArtistSheet(folder) {
+function openYaArtistSheet(folder) {
   yaSheetFolder = folder;
   document.getElementById('yaSheetName').textContent = folder;
   document.getElementById('yaSheetFb').textContent = (folder || '?').trim().charAt(0).toUpperCase();
   const img = document.getElementById('yaSheetImg');
+  const fb = document.getElementById('yaSheetFb');
+  if (fb) fb.style.display = '';
   img.style.display = 'none';
   img.removeAttribute('src');
-  try {
-    const urls = await loadArtistImages(folder);
-    if (urls && urls.length) {
-      const url = pickArtistImage(folder, urls);
-      if (url) {
-        img.onload = () => {
-          img.style.display = 'block';
-          const fb = document.getElementById('yaSheetFb');
-          if (fb) fb.style.display = 'none';
-        };
-        img.src = url;
-      }
-    }
-  } catch(_) {}
+  loadArtistThumbInto(folder, img, fb);
   refreshYaFavoriteUI(folder);
   document.getElementById('yaSheetBackdrop').classList.add('open');
   document.getElementById('yaArtistSheet').classList.add('open');
@@ -9224,10 +9207,14 @@ function renderLlList() {
     if (r.type === 'artist') {
       try {
         const urls = await loadArtistImages(r.folder);
-        if (!urls || !urls.length) return;
-        const url = pickArtistImage(r.folder, urls);
-        if (url) { img.onload = () => img.classList.add('loaded'); img.src = url; }
+        if (urls && urls.length) {
+          const url = pickArtistImage(r.folder, urls);
+          if (url) { img.onload = () => img.classList.add('loaded'); img.src = url; return; }
+        }
       } catch(_) {}
+      // Fallback: first song art of the artist's folder
+      const fi = playlist.findIndex(p => p.folder === r.folder);
+      if (fi >= 0 && playlist[fi].songs.length) loadCardArt(playlist[fi].songs[0], img);
       return;
     }
     loadCardArt(r.fn, img);
@@ -9319,22 +9306,12 @@ function renderLlList() {
       </div>
     </div>`;
   }).join('');
-  listenLater.forEach(async (r, i) => {
+  listenLater.forEach((r, i) => {
     const img = document.getElementById(`ll-img-${i}`);
     if (!img) return;
     if (r.type === 'artist') {
-      try {
-        const urls = await loadArtistImages(r.folder);
-        if (!urls || !urls.length) return;
-        const url = pickArtistImage(r.folder, urls);
-        if (!url) return;
-        img.onload = () => {
-          img.style.display = 'block';
-          const fb = img.parentElement && img.parentElement.querySelector('.ll-item-art-fb');
-          if (fb) fb.style.display = 'none';
-        };
-        img.src = url;
-      } catch(_) {}
+      const fb = img.parentElement && img.parentElement.querySelector('.ll-item-art-fb');
+      loadArtistThumbInto(r.folder, img, fb);
       return;
     }
     loadCardArt(r.fn, img);
