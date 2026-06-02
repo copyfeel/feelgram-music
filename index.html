@@ -2996,6 +2996,121 @@ main {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
+/* ── Favorite Soundtrack — horizontal video card strip ── */
+.ha-st-scroll {
+  display: flex; gap: 14px;
+  overflow-x: auto; padding: 0 20px 10px;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+.ha-st-scroll::-webkit-scrollbar { display: none; }
+.ha-st-card {
+  flex-shrink: 0; width: 280px; height: 158px;
+  position: relative; cursor: pointer;
+  border-radius: 12px; overflow: hidden;
+  background: var(--surface2);
+  scroll-snap-align: start;
+}
+.ha-st-card img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%; object-fit: cover;
+  display: block;
+  transition: transform .3s ease;
+}
+.ha-st-card:active img { transform: scale(1.02); }
+.ha-st-card-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.25) 55%, transparent 80%);
+  display: flex; align-items: flex-end;
+  padding: 14px 60px 12px 14px;
+  pointer-events: none;
+}
+.ha-st-card-title {
+  color: white;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px; font-weight: 700;
+  line-height: 1.3;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ha-st-card-play {
+  position: absolute; right: 12px; bottom: 12px;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.95);
+  display: flex; align-items: center; justify-content: center;
+  color: #1c1c1c;
+  border: none; padding: 0;
+  pointer-events: none;
+}
+
+/* ── Soundtrack video player (full-screen overlay) ── */
+.st-player {
+  position: fixed; inset: 0;
+  background: #000;
+  z-index: 200;
+  display: none;
+  flex-direction: column;
+  opacity: 0;
+  transition: opacity .25s ease;
+}
+.st-player.open { display: flex; opacity: 1; }
+.st-player-bar {
+  position: absolute; top: 0; left: 0; right: 0;
+  display: flex; align-items: center; gap: 12px;
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 14px;
+  color: white;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent);
+  z-index: 2;
+}
+.st-player-close {
+  background: rgba(255,255,255,0.12);
+  border: none; padding: 8px;
+  border-radius: 50%;
+  color: white; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.st-player-title {
+  flex: 1; min-width: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px; font-weight: 600;
+  color: white;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+}
+.st-player video {
+  width: 100%; height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
+/* ── Favorite Soundtrack — full-screen grid (MORE) ── */
+.fs-screen {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  bottom: calc(var(--mini-h) + var(--nav-h) + env(safe-area-inset-bottom, 0px));
+  background: var(--bg);
+  z-index: 35;
+  transform: translateX(100%);
+  transition: transform .35s cubic-bezier(0.32, 0.72, 0, 1);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.fs-screen.open { transform: translateX(0); }
+.fs-top-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 8px;
+}
+.fs-title {
+  flex: 1; margin: 0;
+  font-family: 'Playfair Display', 'Times New Roman', Georgia, serif;
+  font-size: 20px; font-weight: 400; letter-spacing: -0.3px;
+  text-align: center;
+  color: var(--text);
+}
+.fs-list { flex: 1; overflow-y: auto; padding: 6px 16px 24px; display: grid; gap: 14px; }
+
 /* ── Your recent artists — full screen ── */
 .ya-screen {
   position: fixed;
@@ -3854,7 +3969,7 @@ main {
 <!-- Build marker — visible in the top-right corner. If you see this label
      with the latest commit hash it confirms the new shell has landed.
      Tiny enough not to disturb the layout. -->
-<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v25</div>
+<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v26</div>
 
 <!-- Drawer Overlay -->
 <div class="drawer-overlay" id="drawerOverlay"></div>
@@ -3932,6 +4047,17 @@ main {
           </div>
           <div class="ha-artists-scroll" id="haArtistsContainer">
             <div class="ha-empty">최근 들은 아티스트가 없습니다</div>
+          </div>
+        </div>
+
+        <!-- Favorite Soundtrack (horizontal strip with video cards) -->
+        <div class="ha-section" id="haSoundtrackSection" style="padding-top:24px">
+          <div class="ha-artists-header">
+            <h2 class="ha-artists-title">Favorite Soundtrack</h2>
+            <button class="ha-more" onclick="openFavoriteSoundtrack()">MORE</button>
+          </div>
+          <div class="ha-st-scroll" id="haSoundtrackContainer">
+            <div class="ha-empty">사운드트랙이 없습니다</div>
           </div>
         </div>
       </div>
@@ -4914,6 +5040,33 @@ main {
   <div class="ll-list-wrap" id="llList"></div>
 </div>
 
+<!-- Soundtrack video player (full-screen overlay) -->
+<div class="st-player" id="soundtrackPlayer">
+  <div class="st-player-bar">
+    <button class="st-player-close" onclick="closeSoundtrackPlayer()" aria-label="닫기">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+    <div class="st-player-title" id="soundtrackTitle"></div>
+  </div>
+  <video id="soundtrackVideo" controls playsinline webkit-playsinline></video>
+</div>
+
+<!-- Favorite Soundtrack full-screen list -->
+<div class="fs-screen" id="fsScreen">
+  <div class="fs-top-bar">
+    <button class="ra-back-btn" onclick="closeFavoriteSoundtrack()" aria-label="뒤로">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+    </button>
+    <h1 class="fs-title">Favorite Soundtrack</h1>
+    <span style="width:32px"></span>
+  </div>
+  <div class="fs-list" id="fsList"></div>
+</div>
+
 <!-- Your recent artists full-screen view -->
 <div class="ya-screen" id="yaScreen">
   <div class="ya-top-bar">
@@ -5214,6 +5367,7 @@ fetch('playlist.json')
     updateFpHeartIcon();
     renderListenLaterCard();
     renderHomeArtists();
+    loadSoundtrack();
     if (window.innerWidth >= 768) {
       // 데스크톱: 복원된 폴더 또는 첫 폴더 선택
       if (currentFolder !== null && playlist[currentFolder]) selectFolder(currentFolder);
@@ -7944,6 +8098,134 @@ function navigateToArtist(folder) {
   selectFolder(fi);
 }
 
+// ── Favorite Soundtrack ──
+let soundtrack = [];
+async function loadSoundtrack() {
+  try {
+    const res = await fetch('soundtrack.json');
+    if (res.ok) {
+      const list = await res.json();
+      soundtrack = (Array.isArray(list) ? list : []).slice().sort(sortSoundtrack);
+    }
+  } catch(_) {}
+  renderSoundtrackStrip();
+}
+// Korean first, then everything else; within each group localeCompare.
+function sortSoundtrack(a, b) {
+  const stripA = a.replace(/^\[영화\]\s*/, '').replace(/\.(mp4|mov|m4v|webm)$/i, '').trim();
+  const stripB = b.replace(/^\[영화\]\s*/, '').replace(/\.(mp4|mov|m4v|webm)$/i, '').trim();
+  const isKr = (s) => /[가-힣]/.test(s.charAt(0));
+  const kA = isKr(stripA), kB = isKr(stripB);
+  if (kA && !kB) return -1;
+  if (!kA && kB) return 1;
+  return stripA.localeCompare(stripB, 'ko');
+}
+function soundtrackTitle(fn) {
+  return fn.replace(/\.(mp4|mov|m4v|webm)$/i, '');
+}
+function soundtrackBaseName(fn) {
+  return fn.replace(/\.(mp4|mov|m4v|webm)$/i, '');
+}
+function soundtrackVideoUrl(fn) {
+  return 'music/soundtrack/' + encodeURIComponent(fn);
+}
+
+// Try the user's poster image alongside the video. Same base name with
+// any of jpg/jpeg/png/webp extensions; first one that 200s wins.
+async function loadSoundtrackPoster(base, img) {
+  const exts = ['jpg', 'jpeg', 'png', 'webp'];
+  for (const ext of exts) {
+    const url = 'music/soundtrack/' + encodeURIComponent(base + '.' + ext);
+    try {
+      const res = await fetch(url, { method: 'HEAD' });
+      if (res.ok) { img.src = url; return; }
+    } catch(_) {}
+  }
+}
+
+function renderSoundtrackStrip() {
+  const container = document.getElementById('haSoundtrackContainer');
+  if (!container) return;
+  if (!soundtrack.length) {
+    container.innerHTML = `<div class="ha-empty">사운드트랙이 없습니다</div>`;
+    return;
+  }
+  container.innerHTML = soundtrack.map((fn, i) => {
+    const title = soundtrackTitle(fn);
+    return `<div class="ha-st-card" onclick="openSoundtrackPlayer(${i})">
+      <img id="ha-st-img-${i}" alt="">
+      <div class="ha-st-card-overlay">
+        <span class="ha-st-card-title">${esc(title)}</span>
+      </div>
+      <span class="ha-st-card-play" aria-hidden="true">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+      </span>
+    </div>`;
+  }).join('');
+  soundtrack.forEach((fn, i) => {
+    const img = document.getElementById(`ha-st-img-${i}`);
+    if (img) loadSoundtrackPoster(soundtrackBaseName(fn), img);
+  });
+}
+
+// ── Video player modal ──
+function openSoundtrackPlayer(idx) {
+  const fn = soundtrack[idx];
+  if (!fn) return;
+  // Pause main audio so audio/video don't fight for the session.
+  try { audio.pause(); } catch(_) {}
+  const modal = document.getElementById('soundtrackPlayer');
+  const video = document.getElementById('soundtrackVideo');
+  const titleEl = document.getElementById('soundtrackTitle');
+  titleEl.textContent = soundtrackTitle(fn);
+  video.src = soundtrackVideoUrl(fn);
+  modal.classList.add('open');
+  // Try to autoplay; iOS may require muted autoplay so leave sound on
+  // and let the user tap play if autoplay is rejected.
+  video.play().catch(() => {});
+}
+function closeSoundtrackPlayer() {
+  const modal = document.getElementById('soundtrackPlayer');
+  const video = document.getElementById('soundtrackVideo');
+  try { video.pause(); } catch(_) {}
+  video.removeAttribute('src');
+  try { video.load(); } catch(_) {}
+  modal.classList.remove('open');
+}
+
+// ── Favorite Soundtrack — full-screen list (MORE) ──
+function openFavoriteSoundtrack() {
+  renderSoundtrackList();
+  document.getElementById('fsScreen').classList.add('open');
+}
+function closeFavoriteSoundtrack() {
+  document.getElementById('fsScreen').classList.remove('open');
+}
+function renderSoundtrackList() {
+  const list = document.getElementById('fsList');
+  if (!list) return;
+  if (!soundtrack.length) {
+    list.innerHTML = `<div class="ha-empty">사운드트랙이 없습니다</div>`;
+    return;
+  }
+  list.innerHTML = soundtrack.map((fn, i) => {
+    const title = soundtrackTitle(fn);
+    return `<div class="ha-st-card" style="width:100%;height:200px" onclick="openSoundtrackPlayer(${i})">
+      <img id="fs-st-img-${i}" alt="">
+      <div class="ha-st-card-overlay">
+        <span class="ha-st-card-title" style="font-size:15px">${esc(title)}</span>
+      </div>
+      <span class="ha-st-card-play" aria-hidden="true">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+      </span>
+    </div>`;
+  }).join('');
+  soundtrack.forEach((fn, i) => {
+    const img = document.getElementById(`fs-st-img-${i}`);
+    if (img) loadSoundtrackPoster(soundtrackBaseName(fn), img);
+  });
+}
+
 // Look at recentPlays for the most recently played song that belongs to
 // `folder`. Used as the album-art fallback for synthetic folders like
 // '기타' / 'Jazz' where there's no artist photo — we want the cover of
@@ -9518,6 +9800,10 @@ function switchTab(tabName, showFeed = true) {
   }
   const yaScreen = document.getElementById('yaScreen');
   if (yaScreen && yaScreen.classList.contains('open')) yaScreen.classList.remove('open');
+  const fsScreen = document.getElementById('fsScreen');
+  if (fsScreen && fsScreen.classList.contains('open')) fsScreen.classList.remove('open');
+  const stPlayer = document.getElementById('soundtrackPlayer');
+  if (stPlayer && stPlayer.classList.contains('open')) closeSoundtrackPlayer();
   const panels = { home: 'tabHome', search: 'tabSearch', library: 'tabLibrary', audio: 'tabAudio' };
   Object.entries(panels).forEach(([name, id]) => {
     const el = document.getElementById(id);
