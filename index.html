@@ -3998,7 +3998,7 @@ main {
 <!-- Build marker — visible in the top-right corner. If you see this label
      with the latest commit hash it confirms the new shell has landed.
      Tiny enough not to disturb the layout. -->
-<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v28</div>
+<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v29</div>
 
 <!-- Drawer Overlay -->
 <div class="drawer-overlay" id="drawerOverlay"></div>
@@ -8138,7 +8138,11 @@ function navigateToArtist(folder) {
 // next to the slugged filenames (soundtrack-NN.*) that match the release
 // assets, so the UI keeps showing the human title while the URL stays
 // boring enough for GitHub's asset hosting to accept.
-const SOUNDTRACK_BASE_URL = 'https://github.com/copyfeel/feelgram-music/releases/download/soundtrack-v1/';
+// Cloudflare Worker proxy. Re-serves the GitHub Release assets with the
+// correct video/mp4 + image/* MIME types and CORS *, which lets iOS
+// Safari stream the mp4 directly through <video src=…> with no
+// download step.
+const SOUNDTRACK_BASE_URL = 'https://feelgram-soundtrack.rarabang.workers.dev/';
 let soundtrack = []; // [{ title, video, poster }]
 
 async function loadSoundtrack() {
@@ -8176,16 +8180,11 @@ function renderSoundtrackStrip() {
 }
 
 // ── Video player modal ──
-// GitHub Releases serves assets as application/octet-stream with
-// Content-Disposition: attachment, which iOS Safari refuses to play
-// through <video src=…>. We download the asset with fetch, wrap the
-// stream in a Blob with an explicit video/mp4 type, hand the video
-// element a blob: URL, and stream progress in the UI so the user knows
-// something's happening on the bigger (100MB+) files.
-let _soundtrackAbort = null;
-let _soundtrackBlobUrl = null;
-
-async function openSoundtrackPlayer(idx) {
+// Streams the mp4 directly from the Cloudflare Worker proxy (which fixes
+// CORS + Content-Type on GitHub Release assets). The native <video>
+// element does its own buffering/seeking via HTTP Range — no manual
+// download, no full-file blob in memory.
+function openSoundtrackPlayer(idx) {
   const entry = soundtrack[idx];
   if (!entry) return;
   try { audio.pause(); } catch(_) {}
@@ -8193,51 +8192,19 @@ async function openSoundtrackPlayer(idx) {
   const video = document.getElementById('soundtrackVideo');
   const titleEl = document.getElementById('soundtrackTitle');
   const loading = document.getElementById('soundtrackLoading');
-  const pctEl = document.getElementById('soundtrackLoadingPct');
-
   titleEl.textContent = entry.title;
-  video.removeAttribute('src');
-  try { video.load(); } catch(_) {}
+  video.poster = soundtrackPosterUrl(entry) || '';
+  video.src = soundtrackVideoUrl(entry);
   modal.classList.add('open');
-  loading.classList.add('active');
-  pctEl.textContent = '0%';
-
-  // Cancel any in-flight download from a previous open.
-  if (_soundtrackAbort) try { _soundtrackAbort.abort(); } catch(_) {}
-  if (_soundtrackBlobUrl) { URL.revokeObjectURL(_soundtrackBlobUrl); _soundtrackBlobUrl = null; }
-
-  const controller = new AbortController();
-  _soundtrackAbort = controller;
-
-  try {
-    const res = await fetch(soundtrackVideoUrl(entry), { signal: controller.signal });
-    if (!res.ok) throw new Error('fetch failed: ' + res.status);
-    const total = Number(res.headers.get('content-length')) || 0;
-    const reader = res.body.getReader();
-    const chunks = [];
-    let received = 0;
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value);
-      received += value.length;
-      if (total) pctEl.textContent = Math.floor((received / total) * 100) + '%';
-    }
-    // If the user closed the modal mid-download we'll be aborted; abort()
-    // throws on the next read so we won't reach here.
-    const blob = new Blob(chunks, { type: 'video/mp4' });
-    _soundtrackBlobUrl = URL.createObjectURL(blob);
-    video.src = _soundtrackBlobUrl;
-    loading.classList.remove('active');
-    video.play().catch(() => {});
-  } catch (e) {
-    if (e && e.name === 'AbortError') return; // user closed; ignore
-    loading.classList.remove('active');
-    // Last-ditch: hand the original URL to the element — works in
-    // browsers that ignore the attachment header (rare).
-    video.src = soundtrackVideoUrl(entry);
-    video.play().catch(() => {});
-  }
+  // Native <video> shows its own spinner during initial buffer; we only
+  // surface ours on persistent waiting events.
+  const hide = () => loading.classList.remove('active');
+  const show = () => loading.classList.add('active');
+  video.onwaiting  = show;
+  video.onplaying  = hide;
+  video.oncanplay  = hide;
+  loading.classList.remove('active');
+  video.play().catch(() => {});
 }
 function closeSoundtrackPlayer() {
   const modal = document.getElementById('soundtrackPlayer');
@@ -8245,9 +8212,9 @@ function closeSoundtrackPlayer() {
   const loading = document.getElementById('soundtrackLoading');
   try { video.pause(); } catch(_) {}
   video.removeAttribute('src');
+  video.removeAttribute('poster');
   try { video.load(); } catch(_) {}
-  if (_soundtrackAbort) { try { _soundtrackAbort.abort(); } catch(_) {} _soundtrackAbort = null; }
-  if (_soundtrackBlobUrl) { URL.revokeObjectURL(_soundtrackBlobUrl); _soundtrackBlobUrl = null; }
+  video.onwaiting = video.onplaying = video.oncanplay = null;
   loading.classList.remove('active');
   modal.classList.remove('open');
 }
