@@ -3084,6 +3084,35 @@ main {
   object-fit: contain;
   background: #000;
 }
+.st-player-loading {
+  position: absolute; inset: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: white;
+  z-index: 1;
+  pointer-events: none;
+}
+.st-player-loading.active { display: flex; }
+.st-spinner {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.25);
+  border-top-color: white;
+  animation: stspin .9s linear infinite;
+}
+@keyframes stspin { to { transform: rotate(360deg); } }
+.st-loading-pct {
+  font-family: 'Inter', sans-serif;
+  font-size: 22px; font-weight: 700;
+  color: white;
+}
+.st-loading-hint {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px; color: rgba(255,255,255,0.7);
+}
 
 /* ── Favorite Soundtrack — full-screen grid (MORE) ── */
 .fs-screen {
@@ -3969,7 +3998,7 @@ main {
 <!-- Build marker — visible in the top-right corner. If you see this label
      with the latest commit hash it confirms the new shell has landed.
      Tiny enough not to disturb the layout. -->
-<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v27</div>
+<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v28</div>
 
 <!-- Drawer Overlay -->
 <div class="drawer-overlay" id="drawerOverlay"></div>
@@ -5051,6 +5080,11 @@ main {
     <div class="st-player-title" id="soundtrackTitle"></div>
   </div>
   <video id="soundtrackVideo" controls playsinline webkit-playsinline></video>
+  <div class="st-player-loading" id="soundtrackLoading">
+    <div class="st-spinner"></div>
+    <div class="st-loading-pct" id="soundtrackLoadingPct">0%</div>
+    <div class="st-loading-hint">동영상 준비 중…</div>
+  </div>
 </div>
 
 <!-- Favorite Soundtrack full-screen list -->
@@ -8142,24 +8176,79 @@ function renderSoundtrackStrip() {
 }
 
 // ── Video player modal ──
-function openSoundtrackPlayer(idx) {
+// GitHub Releases serves assets as application/octet-stream with
+// Content-Disposition: attachment, which iOS Safari refuses to play
+// through <video src=…>. We download the asset with fetch, wrap the
+// stream in a Blob with an explicit video/mp4 type, hand the video
+// element a blob: URL, and stream progress in the UI so the user knows
+// something's happening on the bigger (100MB+) files.
+let _soundtrackAbort = null;
+let _soundtrackBlobUrl = null;
+
+async function openSoundtrackPlayer(idx) {
   const entry = soundtrack[idx];
   if (!entry) return;
   try { audio.pause(); } catch(_) {}
   const modal = document.getElementById('soundtrackPlayer');
   const video = document.getElementById('soundtrackVideo');
   const titleEl = document.getElementById('soundtrackTitle');
+  const loading = document.getElementById('soundtrackLoading');
+  const pctEl = document.getElementById('soundtrackLoadingPct');
+
   titleEl.textContent = entry.title;
-  video.src = soundtrackVideoUrl(entry);
+  video.removeAttribute('src');
+  try { video.load(); } catch(_) {}
   modal.classList.add('open');
-  video.play().catch(() => {});
+  loading.classList.add('active');
+  pctEl.textContent = '0%';
+
+  // Cancel any in-flight download from a previous open.
+  if (_soundtrackAbort) try { _soundtrackAbort.abort(); } catch(_) {}
+  if (_soundtrackBlobUrl) { URL.revokeObjectURL(_soundtrackBlobUrl); _soundtrackBlobUrl = null; }
+
+  const controller = new AbortController();
+  _soundtrackAbort = controller;
+
+  try {
+    const res = await fetch(soundtrackVideoUrl(entry), { signal: controller.signal });
+    if (!res.ok) throw new Error('fetch failed: ' + res.status);
+    const total = Number(res.headers.get('content-length')) || 0;
+    const reader = res.body.getReader();
+    const chunks = [];
+    let received = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      received += value.length;
+      if (total) pctEl.textContent = Math.floor((received / total) * 100) + '%';
+    }
+    // If the user closed the modal mid-download we'll be aborted; abort()
+    // throws on the next read so we won't reach here.
+    const blob = new Blob(chunks, { type: 'video/mp4' });
+    _soundtrackBlobUrl = URL.createObjectURL(blob);
+    video.src = _soundtrackBlobUrl;
+    loading.classList.remove('active');
+    video.play().catch(() => {});
+  } catch (e) {
+    if (e && e.name === 'AbortError') return; // user closed; ignore
+    loading.classList.remove('active');
+    // Last-ditch: hand the original URL to the element — works in
+    // browsers that ignore the attachment header (rare).
+    video.src = soundtrackVideoUrl(entry);
+    video.play().catch(() => {});
+  }
 }
 function closeSoundtrackPlayer() {
   const modal = document.getElementById('soundtrackPlayer');
   const video = document.getElementById('soundtrackVideo');
+  const loading = document.getElementById('soundtrackLoading');
   try { video.pause(); } catch(_) {}
   video.removeAttribute('src');
   try { video.load(); } catch(_) {}
+  if (_soundtrackAbort) { try { _soundtrackAbort.abort(); } catch(_) {} _soundtrackAbort = null; }
+  if (_soundtrackBlobUrl) { URL.revokeObjectURL(_soundtrackBlobUrl); _soundtrackBlobUrl = null; }
+  loading.classList.remove('active');
   modal.classList.remove('open');
 }
 
