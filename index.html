@@ -1604,11 +1604,13 @@ main {
   animation: llSectionCurtainDown .85s cubic-bezier(0.22, 0.72, 0, 1) .18s forwards;
 }
 /* Your-recent-artists circles animate when their section scrolls into
-   view (class added by IntersectionObserver, not at home entry). */
+   view (class added by IntersectionObserver, not at home entry). Held
+   slower than the Played strip so the scroll-in moment reads as its
+   own beat instead of a quick swipe. */
 #haArtistsSection.in-view .ha-artist-card {
   opacity: 0;
-  animation: haCardSlideIn .72s cubic-bezier(0.22, 0.72, 0, 1) forwards;
-  animation-delay: calc(var(--idx, 0) * 0.11s);
+  animation: haCardSlideIn 1.05s cubic-bezier(0.22, 0.72, 0, 1) forwards;
+  animation-delay: calc(var(--idx, 0) * 0.16s);
 }
 /* Playlist card — 2x2 mosaic; each tile holds either a song's album
    art or a vinyl-style placeholder so the slot is always visible. */
@@ -4046,7 +4048,7 @@ main {
 <!-- Build marker — visible in the top-right corner. If you see this label
      with the latest commit hash it confirms the new shell has landed.
      Tiny enough not to disturb the layout. -->
-<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v32</div>
+<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v33</div>
 
 <!-- Drawer Overlay -->
 <div class="drawer-overlay" id="drawerOverlay"></div>
@@ -7244,6 +7246,21 @@ function closeFullPlayer() {
 
 document.getElementById('miniPlayer').onclick = openFullPlayer;
 document.getElementById('fpClose').onclick     = closeFullPlayer;
+
+// Tap the full-player album art to jump to that song's folder (the
+// same screen as opening the drawer → tapping that artist in the
+// playlist list). Closes the full player first so the song-list view
+// is what's actually visible.
+(function bindFpArtTap() {
+  const art = document.getElementById('fpArt');
+  if (!art) return;
+  art.style.cursor = 'pointer';
+  art.addEventListener('click', () => {
+    if (currentFolder === null || !playlist[currentFolder]) return;
+    closeFullPlayer();
+    setTimeout(() => selectFolder(currentFolder), 280);
+  });
+})();
 document.getElementById('fpBbMore').onclick    = () => {
   const fn = currentQueue[currentIdx];
   if (fn) openSongMenu(fn, currentFolder);
