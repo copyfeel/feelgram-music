@@ -2964,12 +2964,15 @@ main {
 .ha-artists-title {
   flex: 1; margin: 0;
   font-family: 'Inter', sans-serif;
-  font-size: 18px; font-weight: 700; letter-spacing: -0.3px;
-  color: var(--text);
+  font-size: 18px; font-weight: 600; letter-spacing: -0.2px;
+  /* Slightly lifted black with a warm pink undertone — softer than
+     pure --text but still clearly heading-level. */
+  color: #3a2b34;
 }
 .ha-artists-scroll {
   display: flex; gap: 16px;
-  overflow-x: auto; padding: 0 20px 10px;
+  overflow-x: auto;
+  padding-left: 20px; padding-right: 20px; padding-bottom: 10px; padding-top: 0;
   scroll-snap-type: x proximity;
   -webkit-overflow-scrolling: touch;
 }
@@ -2999,7 +3002,8 @@ main {
 /* ── Favorite Soundtrack — horizontal video card strip ── */
 .ha-st-scroll {
   display: flex; gap: 14px;
-  overflow-x: auto; padding: 0 20px 10px;
+  overflow-x: auto;
+  padding-left: 20px; padding-right: 20px; padding-bottom: 10px; padding-top: 0;
   scroll-snap-type: x proximity;
   -webkit-overflow-scrolling: touch;
 }
@@ -3998,7 +4002,7 @@ main {
 <!-- Build marker — visible in the top-right corner. If you see this label
      with the latest commit hash it confirms the new shell has landed.
      Tiny enough not to disturb the layout. -->
-<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v29</div>
+<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v30</div>
 
 <!-- Drawer Overlay -->
 <div class="drawer-overlay" id="drawerOverlay"></div>
@@ -5698,9 +5702,16 @@ function playCurrent() {
   setPlayIcons(true);
   highlightPlaying(fn);
   addToRecent(fn, currentFolder);
-  // Recent artists: bump whichever folder owns this filename
+  // Recent artists: bump whichever folder owns this filename. For
+  // synthetic buckets (Jazz / 기타 / [B] Beatles / [DJ티비씨]) we
+  // also stash a display name and fn so the strip can show the actual
+  // performer with their own song's album art.
   const owningIdx = lookupFolderIdxByFn(fn);
-  if (owningIdx >= 0) addRecentArtist(playlist[owningIdx].folder);
+  if (owningIdx >= 0) {
+    const folderName = playlist[owningIdx].folder;
+    const display = resolveDisplayArtist(fn, folderName);
+    addRecentArtist(folderName, { display, fn });
+  }
   // Mark as played in Listen Later (if present)
   const llIdx = listenLater.findIndex(r => r.fn === fn);
   if (llIdx >= 0 && !listenLater[llIdx].played) {
@@ -7403,7 +7414,13 @@ function restoreState() {
 function showHomeFeed() {
   const hv = document.getElementById('homeView');
   const mc = document.getElementById('mainContent');
-  if (hv) hv.style.display = '';
+  if (hv) {
+    hv.style.display = '';
+    // Always land on Played (top of feed) when entering home from the
+    // bottom nav or any other "go home" action — no matter where the
+    // user previously scrolled to.
+    hv.scrollTop = 0;
+  }
   if (mc) mc.style.display = 'none';
   renderActivityCards();
 }
@@ -8077,11 +8094,31 @@ function toggleArtistFavorite(folder) {
   return i < 0;
 }
 
-function addRecentArtist(folder) {
+// Folders that are categories, not real artists. When a song from one
+// of these plays we surface the song's filename-level artist in the
+// recent-artists strip instead of the bucket name itself.
+const SYNTHETIC_FOLDERS = new Set(['Jazz', '기타', '[B] Beatles', '[DJ티비씨]']);
+
+function resolveDisplayArtist(fn, folder) {
+  if (!SYNTHETIC_FOLDERS.has(folder)) return folder;
+  try {
+    const { artist } = lyricsParseFilename(fn, folder);
+    if (artist && artist !== folder) return artist;
+  } catch(_) {}
+  return folder;
+}
+
+function addRecentArtist(folder, opts) {
   if (!folder || isArtistBanned(folder)) return;
-  const i = recentArtists.findIndex(r => r.folder === folder);
+  opts = opts || {};
+  const display = opts.display || folder;
+  const fn = opts.fn || null;
+  // Dedup key includes the display name so e.g. "Jazz / Don Shirley" and
+  // "Jazz / Miles Davis" can coexist as separate rows.
+  const key = folder + '\x00' + display;
+  const i = recentArtists.findIndex(r => (r.folder + '\x00' + (r.display || r.folder)) === key);
   if (i >= 0) recentArtists.splice(i, 1);
-  recentArtists.unshift({ folder, lastPlayedAt: Date.now() });
+  recentArtists.unshift({ folder, display, fn, lastPlayedAt: Date.now() });
   if (recentArtists.length > 100) recentArtists.pop();
   saveRecentArtists();
   if (typeof renderHomeArtists === 'function') renderHomeArtists();
@@ -8104,20 +8141,21 @@ function renderHomeArtists() {
     return;
   }
   container.innerHTML = data.map((r, i) => {
-    const initial = (r.folder || '?').trim().charAt(0).toUpperCase();
+    const label = r.display || r.folder;
+    const initial = (label || '?').trim().charAt(0).toUpperCase();
     return `<div class="ha-artist-card" onclick="haArtistCardClick(${i})">
       <div class="ha-artist-circle">
         <img id="ha-art-img-${i}" alt="" style="display:none">
         <span class="ha-artist-fb">${esc(initial)}</span>
       </div>
-      <div class="ha-artist-name">${esc(r.folder)}</div>
+      <div class="ha-artist-name">${esc(label)}</div>
     </div>`;
   }).join('');
   data.forEach((r, i) => {
     const img = document.getElementById(`ha-art-img-${i}`);
     if (!img) return;
     const fb = img.parentElement && img.parentElement.querySelector('.ha-artist-fb');
-    loadArtistThumbInto(r.folder, img, fb);
+    loadArtistThumbInto(r.folder, img, fb, { display: r.display, fn: r.fn });
   });
 }
 
@@ -8262,18 +8300,20 @@ function findRecentSongInFolder(folder) {
   return null;
 }
 
-// Resolve a thumbnail for an artist row/circle. Order of preference:
-//   1) artist-thumbs/ files + TheAudioDB (loadArtistImages)
-//   2) most-recently-played song in this folder, else fallback to its
-//      first song. The recent-song path makes '기타' / 'Jazz' circles
-//      show the cover of whatever the user just listened to instead of
-//      a stale alphabetical default.
-async function loadArtistThumbInto(folder, img, fb) {
+// Resolve a thumbnail for an artist row/circle.
+//   1) artist-thumbs/ + TheAudioDB lookup keyed by the entry's display
+//      name (a real artist, even when the folder is a synthetic bucket).
+//   2) explicit fn (passed in for synthetic buckets so we show that
+//      specific track's album art).
+//   3) most-recently-played song in the folder, else its first song.
+async function loadArtistThumbInto(folder, img, fb, opts) {
   if (!img) return;
+  opts = opts || {};
+  const lookupName = opts.display || folder;
   try {
-    const urls = await loadArtistImages(folder);
+    const urls = await loadArtistImages(lookupName);
     if (urls && urls.length) {
-      const url = pickArtistImage(folder, urls);
+      const url = pickArtistImage(lookupName, urls);
       if (url) {
         img.onload = () => { img.style.display = 'block'; if (fb) fb.style.display = 'none'; };
         img.src = url;
@@ -8281,6 +8321,11 @@ async function loadArtistThumbInto(folder, img, fb) {
       }
     }
   } catch(_) {}
+  if (opts.fn) {
+    img.onload = () => { img.style.display = 'block'; if (fb) fb.style.display = 'none'; };
+    loadCardArt(opts.fn, img);
+    return;
+  }
   let fn = findRecentSongInFolder(folder);
   if (!fn) {
     const fi = playlist.findIndex(p => p.folder === folder);
@@ -8330,7 +8375,8 @@ function renderYaList() {
     return;
   }
   list.innerHTML = data.map((r, i) => {
-    const initial = (r.folder || '?').trim().charAt(0).toUpperCase();
+    const label = r.display || r.folder;
+    const initial = (label || '?').trim().charAt(0).toUpperCase();
     return `<div class="ya-row" data-idx="${i}">
       <div class="ya-delete-bg">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -8345,7 +8391,7 @@ function renderYaList() {
           <img id="ya-row-img-${i}" alt="" style="display:none">
           <span class="ya-row-fb">${esc(initial)}</span>
         </div>
-        <div class="ya-row-name">${esc(r.folder)}</div>
+        <div class="ya-row-name">${esc(label)}</div>
         <button class="ya-row-more" onclick="event.stopPropagation();yaRowMoreClick(${i})" aria-label="더보기">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
             <circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/>
@@ -8358,14 +8404,16 @@ function renderYaList() {
     const img = document.getElementById(`ya-row-img-${i}`);
     if (!img) return;
     const fb = img.parentElement && img.parentElement.querySelector('.ya-row-fb');
-    loadArtistThumbInto(r.folder, img, fb);
+    loadArtistThumbInto(r.folder, img, fb, { display: r.display, fn: r.fn });
   });
   attachYaSwipeHandlers();
 }
 function yaCurrentList() {
   const q = yaSearchQuery.trim().toLowerCase();
   const all = getVisibleArtists();
-  return q ? all.filter(r => (r.folder || '').toLowerCase().includes(q)) : all;
+  return q
+    ? all.filter(r => (r.display || r.folder || '').toLowerCase().includes(q))
+    : all;
 }
 function yaRowClick(ev, i) {
   // Ignore the click that follows a horizontal swipe gesture.
