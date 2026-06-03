@@ -1576,6 +1576,38 @@ main {
 .ha-card-title-text { font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; letter-spacing: -0.1px; }
 .ha-card-sub { font-family: 'Inter', sans-serif; font-size: 10px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; letter-spacing: 0.2px; }
 .ha-empty { padding: 24px 20px; font-size: 13px; color: var(--text3); text-align: center; }
+
+/* ── Home entry animations ──
+   When the user lands on the home feed (bottom-nav Home, etc.) we want
+   the content to feel alive instead of just appearing. Played cards
+   stagger in from the right, Listen Later drops in from above like a
+   curtain, and the artists strip waits to animate until the user
+   scrolls it into view (handled in JS via IntersectionObserver). */
+@keyframes haCardSlideIn {
+  from { opacity: 0; transform: translateX(36px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes llSectionCurtainDown {
+  from { opacity: 0; transform: translateY(-22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+#homeView.home-enter .ha-section .ha-card {
+  opacity: 0;
+  animation: haCardSlideIn .32s cubic-bezier(0.22, 0.72, 0, 1) forwards;
+  animation-delay: calc(var(--idx, 0) * 0.06s);
+}
+#homeView.home-enter .ll-section {
+  opacity: 0;
+  transform-origin: top center;
+  animation: llSectionCurtainDown .36s cubic-bezier(0.22, 0.72, 0, 1) .08s forwards;
+}
+/* Your-recent-artists circles animate when their section scrolls into
+   view (class added by IntersectionObserver, not at home entry). */
+#haArtistsSection.in-view .ha-artist-card {
+  opacity: 0;
+  animation: haCardSlideIn .32s cubic-bezier(0.22, 0.72, 0, 1) forwards;
+  animation-delay: calc(var(--idx, 0) * 0.06s);
+}
 /* Playlist card — 2x2 mosaic; each tile holds either a song's album
    art or a vinyl-style placeholder so the slot is always visible. */
 .ha-card-art.ha-card-art-mosaic {
@@ -2932,7 +2964,9 @@ main {
 .ll-section {
   margin: 8px 0 16px;
   border-radius: 0;
-  background: linear-gradient(to right, #ebe2f5 0%, #f6ecef 50%, #fae6eb 100%);
+  /* Slightly more saturated than the previous very-pale palette so the
+     section reads as its own surface against the home background. */
+  background: linear-gradient(to right, #d7c4ea 0%, #ecd2dc 50%, #f4c4cd 100%);
   padding: 14px 20px;
   min-height: 105px;
 }
@@ -2964,18 +2998,21 @@ main {
 .ha-artists-title {
   flex: 1; margin: 0;
   font-family: 'Inter', sans-serif;
-  font-size: 18px; font-weight: 600; letter-spacing: -0.2px;
-  /* Slightly lifted black with a warm pink undertone — softer than
-     pure --text but still clearly heading-level. */
-  color: #3a2b34;
+  font-size: 18px; font-weight: 500; letter-spacing: -0.1px;
+  /* Lifted further off black with a clearer pink undertone, lighter
+     weight so the title reads softer than the strip content. */
+  color: #6f4f60;
 }
 .ha-artists-scroll {
   display: flex; gap: 16px;
   overflow-x: auto;
-  padding-left: 20px; padding-right: 20px; padding-bottom: 10px; padding-top: 0;
+  padding: 0 0 10px 0;
+  scroll-padding-left: 20px;
   scroll-snap-type: x proximity;
   -webkit-overflow-scrolling: touch;
 }
+.ha-artists-scroll > .ha-artist-card:first-child { margin-left: 20px; }
+.ha-artists-scroll > .ha-artist-card:last-child  { margin-right: 20px; }
 .ha-artists-scroll::-webkit-scrollbar { display: none; }
 .ha-artist-card { flex-shrink: 0; width: 135px; cursor: pointer; scroll-snap-align: start; }
 .ha-artist-circle {
@@ -3003,10 +3040,13 @@ main {
 .ha-st-scroll {
   display: flex; gap: 14px;
   overflow-x: auto;
-  padding-left: 20px; padding-right: 20px; padding-bottom: 10px; padding-top: 0;
+  padding: 0 0 10px 0;
+  scroll-padding-left: 20px;
   scroll-snap-type: x proximity;
   -webkit-overflow-scrolling: touch;
 }
+.ha-st-scroll > .ha-st-card:first-child { margin-left: 20px; }
+.ha-st-scroll > .ha-st-card:last-child  { margin-right: 20px; }
 .ha-st-scroll::-webkit-scrollbar { display: none; }
 .ha-st-card {
   flex-shrink: 0; width: 280px; height: 158px;
@@ -4002,7 +4042,7 @@ main {
 <!-- Build marker — visible in the top-right corner. If you see this label
      with the latest commit hash it confirms the new shell has landed.
      Tiny enough not to disturb the layout. -->
-<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v30</div>
+<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v31</div>
 
 <!-- Drawer Overlay -->
 <div class="drawer-overlay" id="drawerOverlay"></div>
@@ -6318,6 +6358,14 @@ audio.ontimeupdate = () => {
       setPlayIcons(true);
       highlightPlaying(nextFn);
       addToRecent(nextFn, currentFolder);
+      // Mirror playCurrent's recent-artists hook so the strip updates
+      // on auto-advance too (preemptive swap bypasses playCurrent).
+      const owningIdxPre = lookupFolderIdxByFn(nextFn);
+      if (owningIdxPre >= 0) {
+        const folderNamePre = playlist[owningIdxPre].folder;
+        const displayPre = resolveDisplayArtist(nextFn, folderNamePre);
+        addRecentArtist(folderNamePre, { display: displayPre, fn: nextFn });
+      }
       const llIdx = listenLater.findIndex(r => r.fn === nextFn);
       if (llIdx >= 0 && !listenLater[llIdx].played) {
         listenLater[llIdx].played = true;
@@ -7416,14 +7464,44 @@ function showHomeFeed() {
   const mc = document.getElementById('mainContent');
   if (hv) {
     hv.style.display = '';
-    // Always land on Played (top of feed) when entering home from the
-    // bottom nav or any other "go home" action — no matter where the
-    // user previously scrolled to.
     hv.scrollTop = 0;
+    // Re-trigger entry animations: drop the class, force a reflow, then
+    // add it back so the keyframes restart even if we never left the
+    // home tab in the DOM sense.
+    hv.classList.remove('home-enter');
+    void hv.offsetWidth;
+    hv.classList.add('home-enter');
+    setTimeout(() => hv.classList.remove('home-enter'), 1200);
   }
   if (mc) mc.style.display = 'none';
   renderActivityCards();
+  // Reset the artists section's scroll-in flag so the next time the
+  // user scrolls it into view its cards re-animate.
+  const haArtists = document.getElementById('haArtistsSection');
+  if (haArtists) haArtists.classList.remove('in-view');
 }
+
+// One-time IntersectionObserver for the artists strip: when its section
+// enters the viewport (and only then) we add .in-view to let the
+// per-card animation fire.
+(function setupHaArtistsObserver() {
+  let observer = null;
+  function attach() {
+    const section = document.getElementById('haArtistsSection');
+    const hv = document.getElementById('homeView');
+    if (!section || !hv) { setTimeout(attach, 250); return; }
+    if (observer) observer.disconnect();
+    observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting && e.intersectionRatio > 0.15) {
+          section.classList.add('in-view');
+        }
+      });
+    }, { root: hv, threshold: [0, 0.15, 0.5] });
+    observer.observe(section);
+  }
+  attach();
+})();
 function showSongList() {
   const hv = document.getElementById('homeView');
   const mc = document.getElementById('mainContent');
@@ -7468,7 +7546,7 @@ function renderActivityCards() {
     if (fav) {
       statusIcons += `<div class="ha-ctrl-btn" aria-label="Favorite" style="color:#ff8a95"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div>`;
     }
-    return `<div class="${cls}" data-idx="${i}" onclick="playActivityCard(${i})">
+    return `<div class="${cls}" data-idx="${i}" style="--idx:${i}" onclick="playActivityCard(${i})">
       <div class="ha-card-art">
         <img id="ha-img-${i}" alt="">
         <span class="ha-art-fb">${icon}</span>
@@ -7537,7 +7615,7 @@ function renderActivityPlaylistCard(r, i) {
     const s = pl.songs[j];
     return `<div class="ha-mosaic-tile" style="${MOSAIC_TILE_STYLE}">${s ? `<img id="ha-pm-${i}-${j}" alt="" style="${MOSAIC_IMG_STYLE}">` : ''}<span class="ha-mosaic-fb" style="${MOSAIC_FB_STYLE}"></span></div>`;
   }).join('');
-  return `<div class="ha-card is-playlist" data-idx="${i}" onclick="playActivityCard(${i})">
+  return `<div class="ha-card is-playlist" data-idx="${i}" style="--idx:${i}" onclick="playActivityCard(${i})">
     <div class="ha-card-art ha-card-art-mosaic" style="${MOSAIC_ART_STYLE}">${tiles}</div>
     <div class="ha-card-type">Playlist</div>
     <div class="ha-card-title-row">
@@ -8143,7 +8221,7 @@ function renderHomeArtists() {
   container.innerHTML = data.map((r, i) => {
     const label = r.display || r.folder;
     const initial = (label || '?').trim().charAt(0).toUpperCase();
-    return `<div class="ha-artist-card" onclick="haArtistCardClick(${i})">
+    return `<div class="ha-artist-card" style="--idx:${i}" onclick="haArtistCardClick(${i})">
       <div class="ha-artist-circle">
         <img id="ha-art-img-${i}" alt="" style="display:none">
         <span class="ha-artist-fb">${esc(initial)}</span>
