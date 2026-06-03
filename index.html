@@ -1582,31 +1582,33 @@ main {
    the content to feel alive instead of just appearing. Played cards
    stagger in from the right, Listen Later drops in from above like a
    curtain, and the artists strip waits to animate until the user
-   scrolls it into view (handled in JS via IntersectionObserver). */
+   scrolls it into view (handled in JS via IntersectionObserver).
+   Timings tuned slower than feels strictly necessary so the motion
+   actually reads as motion instead of an instant fade. */
 @keyframes haCardSlideIn {
-  from { opacity: 0; transform: translateX(36px); }
+  from { opacity: 0; transform: translateX(56px); }
   to   { opacity: 1; transform: translateX(0); }
 }
 @keyframes llSectionCurtainDown {
-  from { opacity: 0; transform: translateY(-22px); }
+  from { opacity: 0; transform: translateY(-36px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 #homeView.home-enter .ha-section .ha-card {
   opacity: 0;
-  animation: haCardSlideIn .32s cubic-bezier(0.22, 0.72, 0, 1) forwards;
-  animation-delay: calc(var(--idx, 0) * 0.06s);
+  animation: haCardSlideIn .72s cubic-bezier(0.22, 0.72, 0, 1) forwards;
+  animation-delay: calc(var(--idx, 0) * 0.11s);
 }
 #homeView.home-enter .ll-section {
   opacity: 0;
   transform-origin: top center;
-  animation: llSectionCurtainDown .36s cubic-bezier(0.22, 0.72, 0, 1) .08s forwards;
+  animation: llSectionCurtainDown .85s cubic-bezier(0.22, 0.72, 0, 1) .18s forwards;
 }
 /* Your-recent-artists circles animate when their section scrolls into
    view (class added by IntersectionObserver, not at home entry). */
 #haArtistsSection.in-view .ha-artist-card {
   opacity: 0;
-  animation: haCardSlideIn .32s cubic-bezier(0.22, 0.72, 0, 1) forwards;
-  animation-delay: calc(var(--idx, 0) * 0.06s);
+  animation: haCardSlideIn .72s cubic-bezier(0.22, 0.72, 0, 1) forwards;
+  animation-delay: calc(var(--idx, 0) * 0.11s);
 }
 /* Playlist card — 2x2 mosaic; each tile holds either a song's album
    art or a vinyl-style placeholder so the slot is always visible. */
@@ -3031,8 +3033,10 @@ main {
 }
 .ha-artist-name {
   font-family: 'Inter', sans-serif;
-  font-size: 14px; font-weight: 600;
-  text-align: center; color: var(--text);
+  font-size: 14px; font-weight: 500;
+  text-align: center;
+  /* Soft grey caption tone — clearly subordinate to the circle above. */
+  color: #9a9a9a;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
@@ -4042,7 +4046,7 @@ main {
 <!-- Build marker — visible in the top-right corner. If you see this label
      with the latest commit hash it confirms the new shell has landed.
      Tiny enough not to disturb the layout. -->
-<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v31</div>
+<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v32</div>
 
 <!-- Drawer Overlay -->
 <div class="drawer-overlay" id="drawerOverlay"></div>
@@ -7471,7 +7475,7 @@ function showHomeFeed() {
     hv.classList.remove('home-enter');
     void hv.offsetWidth;
     hv.classList.add('home-enter');
-    setTimeout(() => hv.classList.remove('home-enter'), 1200);
+    setTimeout(() => hv.classList.remove('home-enter'), 2200);
   }
   if (mc) mc.style.display = 'none';
   renderActivityCards();
