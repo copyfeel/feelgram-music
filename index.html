@@ -4048,7 +4048,7 @@ main {
 <!-- Build marker — visible in the top-right corner. If you see this label
      with the latest commit hash it confirms the new shell has landed.
      Tiny enough not to disturb the layout. -->
-<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v33</div>
+<div style="position:fixed;top:4px;right:4px;font-size:9px;color:#bbb;background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:8px;z-index:99999;pointer-events:none;font-family:-apple-system,monospace">build v34</div>
 
 <!-- Drawer Overlay -->
 <div class="drawer-overlay" id="drawerOverlay"></div>
@@ -7247,18 +7247,23 @@ function closeFullPlayer() {
 document.getElementById('miniPlayer').onclick = openFullPlayer;
 document.getElementById('fpClose').onclick     = closeFullPlayer;
 
-// Tap the full-player album art to jump to that song's folder (the
-// same screen as opening the drawer → tapping that artist in the
-// playlist list). Closes the full player first so the song-list view
-// is what's actually visible.
+// Tap the full-player album art to jump to *the currently playing
+// song's* folder. Resolve by filename (not by `currentFolder`) because
+// playback from cross-folder sources (Listen Later, Recent Activity,
+// custom playlists, the full-player's previous/next buttons across a
+// playlist) can leave currentFolder pointing at the screen the user
+// originally came from rather than the song that's actually playing.
 (function bindFpArtTap() {
   const art = document.getElementById('fpArt');
   if (!art) return;
   art.style.cursor = 'pointer';
   art.addEventListener('click', () => {
-    if (currentFolder === null || !playlist[currentFolder]) return;
+    const fn = currentQueue[currentIdx];
+    if (!fn) return;
+    const idx = lookupFolderIdxByFn(fn);
+    if (idx < 0 || !playlist[idx]) return;
     closeFullPlayer();
-    setTimeout(() => selectFolder(currentFolder), 280);
+    setTimeout(() => selectFolder(idx), 280);
   });
 })();
 document.getElementById('fpBbMore').onclick    = () => {
