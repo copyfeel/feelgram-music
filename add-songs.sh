@@ -42,6 +42,25 @@ if lsof -ti:8765 > /dev/null 2>&1; then
   sleep 1
 fi
 
+# ── 1.5 Sanitize filenames (Netlify rejects # and ? in deployed paths) ──
+RENAMED=0
+while IFS= read -r -d '' f; do
+  case "$f" in
+    *'#'*|*'?'*)
+      newname="${f//#/}"
+      newname="${newname//\?/}"
+      if [ "$f" != "$newname" ] && [ ! -e "$newname" ]; then
+        mv -- "$f" "$newname"
+        RENAMED=$((RENAMED + 1))
+      fi
+      ;;
+  esac
+done < <(find music -maxdepth 1 -type f -print0)
+
+if [ "$RENAMED" -gt 0 ]; then
+  echo -e "${YELLOW}⚠  Sanitized $RENAMED filename(s) — stripped # and ? (Netlify rejects them)${NC}"
+fi
+
 # ── 2. Start local server in background ───────────────────────
 echo -e "${CYAN}▸ Starting local catalog server...${NC}"
 python3 server.py > /tmp/feelgram-server.log 2>&1 &
