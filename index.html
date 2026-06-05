@@ -8352,12 +8352,41 @@ function renderHomeArtists() {
 function haArtistCardClick(idx) {
   const r = getVisibleArtists()[idx];
   if (!r) return;
-  navigateToArtist(r.folder);
+  navigateToArtist(r.folder, { display: r.display, fn: r.fn });
 }
-function navigateToArtist(folder) {
+// `opts` carries the recent-artist context so we can scroll the destination
+// song list to where the artist actually sits inside the folder. For a
+// single-artist folder this no-ops (the first match is row 0); for synthetic
+// buckets like Jazz / 기타 it slides to the artist's group.
+function navigateToArtist(folder, opts) {
   const fi = playlist.findIndex(p => p.folder === folder);
   if (fi < 0) return;
   selectFolder(fi);
+  if (!opts) return;
+  const targetFn = opts.fn || null;
+  const targetDisplay = (opts.display || '').toLowerCase();
+  if (!targetFn && !targetDisplay) return;
+  requestAnimationFrame(() => {
+    const rows = document.querySelectorAll('.song-list .song-row');
+    if (!rows.length) return;
+    let row = null;
+    if (targetFn) {
+      for (const r of rows) {
+        if (r.dataset.file === targetFn) { row = r; break; }
+      }
+    }
+    if (!row && targetDisplay) {
+      for (const r of rows) {
+        const fn = r.dataset.file || '';
+        const dash = fn.indexOf(' - ');
+        if (dash <= 0) continue;
+        if (fn.substring(0, dash).trim().toLowerCase() === targetDisplay) {
+          row = r; break;
+        }
+      }
+    }
+    if (row) row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  });
 }
 
 // ── Favorite Soundtrack ──
@@ -8612,7 +8641,7 @@ function yaRowClick(ev, i) {
   const r = yaCurrentList()[i];
   if (!r) return;
   closeYourArtists();
-  navigateToArtist(r.folder);
+  navigateToArtist(r.folder, { display: r.display, fn: r.fn });
 }
 function yaDeleteAt(i) {
   // The on-screen list is filtered (search). Map the visible index back
